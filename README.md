@@ -1,5 +1,7 @@
 # PennyWallet
 
+> **Personal fork.** This is a standalone copy of [twrusstw/penny-wallet](https://github.com/twrusstw/penny-wallet), maintained for my own use. It does not track upstream and has diverged from it. The plugin id is `penny-wallet-ben`, so it is not the community plugin and is not updated through Obsidian. Issues and feature requests for PennyWallet belong in the original repository. The original MIT license and copyright notice are kept in [LICENSE](LICENSE).
+
 A personal finance tracker plugin for [Obsidian](https://obsidian.md). Log expenses, income, transfers, credit card payments, and refunds — all stored as plain Markdown tables in your vault.
 
 **Documentation:** [English](https://twrusstw.github.io/penny-wallet/) · [繁體中文](https://twrusstw.github.io/penny-wallet/zh/)
