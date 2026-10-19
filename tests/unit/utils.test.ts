@@ -182,6 +182,6 @@ describe('formatHeroAmount', () => {
 
 describe('formatMobileHeroAmount', () => {
   it('puts refund plus before currency symbol', () => {
-    expect(formatMobileHeroAmount('123', true)).toBe('+ $123')
+    expect(formatMobileHeroAmount('123', true)).toBe('+ ₹123')
   })
 })

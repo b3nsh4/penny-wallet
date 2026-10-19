@@ -44,7 +44,7 @@ export function formatHeroAmount(raw: string): string {
 }
 
 export function formatMobileHeroAmount(raw: string, isRefund: boolean): string {
-  const amount = `$${formatHeroAmount(raw)}`
+  const amount = `₹${formatHeroAmount(raw)}`
   return isRefund && raw !== '' ? `+ ${amount}` : amount
 }
 
