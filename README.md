@@ -19,30 +19,30 @@ A personal finance tracker plugin for [Obsidian](https://obsidian.md). Log expen
 
 ## Installation
 
-### Community plugins
+This fork is not published to the Obsidian community plugin list and has no releases. Searching for PennyWallet in Obsidian installs the original plugin, not this one. The only way to install this version is to build it from source.
 
-1. Open **Settings → Community plugins → Browse**
-2. Search for **PennyWallet**
-3. Click **Install**, then **Enable**
+### Build from source
 
-### BRAT (beta)
+Requires Node.js and npm.
 
-[BRAT](https://github.com/TfTHacker/obsidian42-brat) is a community plugin that installs beta plugins directly from GitHub and keeps them updated.
+```bash
+git clone https://github.com/b3nsh4/penny-wallet.git
+cd penny-wallet
+npm ci
+npm run build
+```
 
-1. Install the **BRAT** plugin from **Settings → Community plugins → Browse** and enable it
-2. Run **BRAT: Add a beta plugin for testing** from the Command Palette
-3. Enter the repository: `twrusstw/penny-wallet`
-4. Enable **PennyWallet** in **Settings → Community plugins**
+1. Create `<vault>/.obsidian/plugins/penny-wallet-ben/`
+2. Copy `main.js`, `manifest.json` and `styles.css` from the repository root into it
+3. Reload Obsidian and enable **PennyWallet (Ben)** in **Settings → Community plugins**
 
-### Manual
+Do not enable this alongside the original PennyWallet. Both read the same `.penny-wallet.json` and register the same views. Disable the original first; your existing data is picked up as is.
 
-1. Download `main.js`, `manifest.json`, `styles.css` from the [latest release](https://github.com/twrusstw/penny-wallet/releases/latest)
-2. Copy them to `<vault>/.obsidian/plugins/penny-wallet/`
-3. Enable the plugin in **Settings → Community plugins**
+To update, pull, rebuild, and copy the three files again.
 
 ## Getting started
 
-1. Enable PennyWallet — a wallet icon appears in the left ribbon
+1. Enable PennyWallet (Ben) — a wallet icon appears in the left ribbon
 2. Open **Settings → PennyWallet** and add your accounts with their current balances ([Settings guide](https://twrusstw.github.io/penny-wallet/settings) · [中文說明](https://twrusstw.github.io/penny-wallet/zh/settings))
 3. Click the ribbon icon or run **Add transaction** from the Command Palette to log your first entry
 
