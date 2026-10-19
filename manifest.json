@@ -1,6 +1,6 @@
 {
-  "id": "penny-wallet",
-  "name": "PennyWallet",
+  "id": "penny-wallet-ben",
+  "name": "PennyWallet (Ben)",
   "version": "0.0.15",
   "minAppVersion": "1.4.0",
   "description": "Track expenses, income, transfers, and credit card repayments as Markdown tables in your vault.",
