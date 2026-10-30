@@ -2,7 +2,8 @@ import { App, Modal, Notice, setIcon } from 'obsidian'
 import { Transaction, TransactionType, TransactionModalParams, PennyWalletConfig } from '../types'
 import { WalletFile } from '../io/WalletFile'
 import { dateToYearMonth } from '../utils'
-import { t } from '../i18n'
+import { t, tn, translateCategory } from '../i18n'
+import { newRecurringId, recurringFromExpense } from '../io/recurring'
 import { parseAmountForEdit, getCategoryOptions as getCategoryOptionsFromState, validateTransactionForm, buildTransactionPayload, getTransferWalletCandidates, type TransactionFormState } from './transactionState'
 import { buildTagInput } from './TagInput'
 import { ConfirmModal } from './ConfirmModal'
@@ -26,6 +27,8 @@ export class TransactionModal extends Modal {
   protected tags: string[] = []
   protected amount: string = ''
   protected isRefund: boolean = false
+  protected repeatMonthly = false
+  protected repeatEndMonth = ''     // yyyy-mm, empty = no end
 
   // DOM refs
   private typeTabsEl!: HTMLElement
@@ -193,6 +196,7 @@ export class TransactionModal extends Modal {
     // Refund row first (expense only) — sub-option of the type tab, visually adjacent.
     if (this.type === 'expense') {
       this.addRefundRow(this.fieldsEl)
+      if (this.canRepeat()) this.addRepeatRow(this.fieldsEl)
     }
 
     // Date field (always shown)
@@ -326,6 +330,36 @@ export class TransactionModal extends Modal {
     row.appendChild(checkbox)
   }
 
+  private addRepeatRow(container: HTMLElement) {
+    const block = container.createDiv('pw-refund-block')
+    const row = block.createDiv('pw-field-row pw-refund-row')
+    row.setAttribute('title', t('modal.repeatHint'))
+    const checkboxId = 'pw-repeat-checkbox'
+    row.createEl('label', { text: t('modal.repeatMonthly'), cls: 'pw-field-label', attr: { for: checkboxId } })
+    const checkbox = createEl('input', { type: 'checkbox' })
+    checkbox.id = checkboxId
+    checkbox.checked = this.repeatMonthly
+    checkbox.addClass('pw-field-input')
+    row.appendChild(checkbox)
+
+    const untilRow = block.createDiv('pw-field-row')
+    untilRow.createEl('label', { text: t('modal.repeatUntil'), cls: 'pw-field-label' })
+    const untilInput = untilRow.createEl('input', { type: 'month', cls: 'pw-field-input' })
+    untilInput.value = this.repeatEndMonth
+    untilInput.addEventListener('change', () => { this.repeatEndMonth = untilInput.value })
+    untilRow.toggle(this.repeatMonthly)
+
+    checkbox.addEventListener('change', () => {
+      this.repeatMonthly = checkbox.checked
+      untilRow.toggle(this.repeatMonthly)
+    })
+  }
+
+  /** Repeat is offered only when adding a new expense. */
+  protected canRepeat(): boolean {
+    return this.type === 'expense' && !this.editingTx
+  }
+
   private updateDesktopAmountPrefix() {
     if (!this.amountPrefixEl) return
     const shouldShow = this.isRefund && this.amount !== ''
@@ -417,7 +451,15 @@ export class TransactionModal extends Modal {
       this.showError(t(result.errorKey))
       return false
     }
+    if (this.isRepeating() && this.repeatEndMonth && this.repeatEndMonth < this.date.slice(0, 7)) {
+      this.showError(t('err.repeatEndBeforeDate'))
+      return false
+    }
     return true
+  }
+
+  private isRepeating(): boolean {
+    return this.repeatMonthly && this.canRepeat() && !this.isRefund
   }
 
   protected handleDelete(): void {
@@ -446,6 +488,9 @@ export class TransactionModal extends Modal {
     if (!this.validate()) return
     this.isConfirming = true
 
+    const repeating = this.isRepeating()
+    // A recurring payment needs a name; fall back to the category when the note is empty
+    if (repeating && !this.note.trim()) this.note = translateCategory(this.category)
     const newTx = buildTransactionPayload(this.getFormState())
     const newYearMonth = dateToYearMonth(this.date)
 
@@ -457,6 +502,11 @@ export class TransactionModal extends Modal {
         )
       } else {
         await this.walletFile.writeTransaction(newTx, newYearMonth)
+        if (repeating && !(this.repeatEndMonth && this.repeatEndMonth <= newYearMonth)) {
+          const item = recurringFromExpense(newTx, this.date, newTx.note.trim(), this.repeatEndMonth || undefined, newRecurringId())
+          await this.walletFile.addRecurring(item)
+          new Notice(tn('notice.recurringCreated', { name: item.name }))
+        }
       }
 
       this.close()

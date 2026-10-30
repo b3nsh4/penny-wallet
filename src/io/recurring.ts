@@ -60,3 +60,29 @@ export function hasRecurringEntry(transactions: Transaction[], r: RecurringPayme
     tx.amount === r.amount,
   )
 }
+
+/**
+ * Recurring payment created from a newly added expense. The expense itself
+ * covers its own month, so the payment is marked as already posted there.
+ * `date` is "yyyy-mm-dd".
+ */
+export function recurringFromExpense(
+  tx: Transaction, date: string, name: string, endMonth: string | undefined, id: string,
+): RecurringPayment {
+  const ym = date.slice(0, 7)
+  return {
+    id,
+    name,
+    amount: tx.amount,
+    wallet: tx.wallet ?? '',
+    category: tx.category ?? '',
+    day: Number(date.slice(8, 10)),
+    startMonth: ym,
+    endMonth,
+    lastPosted: ym,
+  }
+}
+
+export function newRecurringId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+}

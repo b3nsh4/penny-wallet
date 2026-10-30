@@ -112,6 +112,11 @@ const translations = {
     'modal.amount': 'Amount',
     'modal.isRefund': 'This is a refund',
     'modal.isRefund.hint': 'Stored as a negative expense (for refunds and returns)',
+    'modal.repeatMonthly': 'Repeat monthly',
+    'modal.repeatUntil': 'Until (optional)',
+    'modal.repeatHint': 'Added again on this day every month. Edit or stop it in settings.',
+    'err.repeatEndBeforeDate': 'End month cannot be before this transaction',
+    'notice.recurringCreated': '✓ Recurring payment "{name}" added',
 
     'err.amountRequired': 'Amount is required',
     'err.amountPositive': 'Amount must be greater than 0',

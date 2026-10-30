@@ -4,6 +4,7 @@ import {
   dueRecurringMonths,
   buildRecurringTransaction,
   hasRecurringEntry,
+  recurringFromExpense,
 } from '../../src/io/recurring'
 import type { RecurringPayment } from '../../src/types'
 
@@ -92,5 +93,22 @@ describe('buildRecurringTransaction / hasRecurringEntry', () => {
     const tx = buildRecurringTransaction(emi, '2026-11')
     expect(hasRecurringEntry([{ ...tx, amount: 4000 }], emi, '2026-11')).toBe(false)
     expect(hasRecurringEntry([{ ...tx, date: '11/06' }], emi, '2026-11')).toBe(false)
+  })
+})
+
+describe('recurringFromExpense', () => {
+  const tx = { date: '10/07', type: 'expense' as const, wallet: 'bank', category: 'emi', note: 'Phone EMI', amount: 1200 }
+
+  it('takes amount, account, category and day from the expense', () => {
+    expect(recurringFromExpense(tx, '2026-10-07', 'Phone EMI', '2027-03', 'x')).toEqual({
+      id: 'x', name: 'Phone EMI', amount: 1200, wallet: 'bank', category: 'emi',
+      day: 7, startMonth: '2026-10', endMonth: '2027-03', lastPosted: '2026-10',
+    })
+  })
+
+  it('treats the expense month as already posted', () => {
+    const r = recurringFromExpense(tx, '2026-10-07', 'Phone EMI', undefined, 'x')
+    expect(dueRecurringMonths(r, on(2026, 10, 30))).toEqual([])
+    expect(dueRecurringMonths(r, on(2026, 11, 7))).toEqual(['2026-11'])
   })
 })

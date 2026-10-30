@@ -160,6 +160,8 @@ export class MobileTransactionModal extends TransactionModal {
         this.updateAmountDisplay()
       })
       block.createDiv({ cls: 'pw-mobile-refund-hint-row', text: t('modal.isRefund.hint') })
+
+      if (this.canRepeat()) this.renderMobileRepeatRows()
     }
 
     // Date Picker
@@ -455,6 +457,34 @@ export class MobileTransactionModal extends TransactionModal {
     this.mobileCalculatorTitleEl.textContent = expressionText
     this.mobileCalculatorTitleEl.toggleClass('is-empty', expressionText === '')
     this.mobileCalculatorTitleEl.toggleClass('is-warning', this.mobileCalculatorState.isPendingExpression)
+  }
+
+  private renderMobileRepeatRows() {
+    const block = this.mobileRowsEl.createDiv('pw-refund-block')
+    const repeatRow = block.createDiv('pw-mobile-row pw-mobile-refund-row')
+    const checkboxId = 'pw-mobile-repeat-checkbox'
+    repeatRow.createEl('label', { cls: 'pw-mobile-row-label', text: t('modal.repeatMonthly'), attr: { for: checkboxId } })
+    const checkbox = repeatRow.createEl('input', { type: 'checkbox' })
+    checkbox.id = checkboxId
+    checkbox.checked = this.repeatMonthly
+
+    const untilRow = block.createDiv('pw-mobile-row')
+    untilRow.createEl('span', { cls: 'pw-mobile-row-label', text: t('modal.repeatUntil') })
+    const untilInput = untilRow.createEl('input', { type: 'month', cls: 'pw-mobile-note-input' })
+    untilInput.value = this.repeatEndMonth
+    untilInput.addEventListener('focus', () => this.closeCalculatorPad())
+    untilInput.addEventListener('change', () => { this.repeatEndMonth = untilInput.value })
+    const hintRow = block.createDiv({ cls: 'pw-mobile-refund-hint-row', text: t('modal.repeatHint') })
+
+    const sync = () => {
+      untilRow.toggle(this.repeatMonthly)
+      hintRow.toggle(this.repeatMonthly)
+    }
+    sync()
+    checkbox.addEventListener('change', () => {
+      this.repeatMonthly = checkbox.checked
+      sync()
+    })
   }
 
   private formatMobileDate(): string {

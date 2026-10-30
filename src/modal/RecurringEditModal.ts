@@ -1,6 +1,7 @@
 import { App, Modal, Notice } from 'obsidian'
 import { PennyWalletConfig, RecurringPayment } from '../types'
 import { getCategoryOptions } from './transactionState'
+import { newRecurringId } from '../io/recurring'
 import { currentYearMonth } from '../utils'
 import { t } from '../i18n'
 
@@ -20,7 +21,7 @@ export class RecurringEditModal extends Modal {
     this.onSave = onSave
     const activeWallets = config.wallets.filter(w => w.status === 'active')
     this.item = existing ? { ...existing } : {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      id: newRecurringId(),
       name: '',
       amount: 0,
       wallet: activeWallets.some(w => w.name === config.defaultWallet)

@@ -11,7 +11,7 @@ import {
   DEFAULT_INCOME_CATEGORIES,
   DEFAULT_TRANSFER_CATEGORIES,
 } from '../types'
-import type { Wallet, FrontmatterIssue, OrphanedWalletIssue, ValidationIssue } from '../types'
+import type { Wallet, FrontmatterIssue, OrphanedWalletIssue, ValidationIssue, RecurringPayment } from '../types'
 import { buildRecurringTransaction, dueRecurringMonths, hasRecurringEntry } from './recurring'
 
 const ROOT_CONFIG_PATH = normalizePath('.penny-wallet.json')
@@ -404,6 +404,11 @@ export class WalletFile {
     }
     const summary = this.computeSummary(transactions)
     await this.writeMonthFile(yearMonth, buildMonthContent(yearMonth, transactions, summary))
+  }
+
+  async addRecurring(item: RecurringPayment): Promise<void> {
+    this.config = { ...this.config, recurring: [...(this.config.recurring ?? []), item] }
+    await this.saveConfig()
   }
 
   /**

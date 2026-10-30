@@ -429,3 +429,20 @@ describe('postDueRecurring', () => {
     expect(parseFrontmatter(store.get('Ledgers/2026-10.md')!).expense).toBe(5000)
   })
 })
+
+describe('addRecurring', () => {
+  it('saves the item and the next month posts once due', async () => {
+    const { wf, store } = await makeWalletFile()
+    await wf.writeTransaction({ date: '10/07', type: 'expense', wallet: 'Default Wallet', category: 'emi', note: 'Phone EMI', amount: 1200 }, '2026-10')
+    await wf.addRecurring({
+      id: 'p1', name: 'Phone EMI', amount: 1200, wallet: 'Default Wallet', category: 'emi',
+      day: 7, startMonth: '2026-10', lastPosted: '2026-10',
+    })
+    expect(JSON.parse(store.get('.penny-wallet.json')!).recurring).toHaveLength(1)
+
+    expect(await wf.postDueRecurring(new Date(2026, 9, 30))).toBe(0)
+    expect(await wf.postDueRecurring(new Date(2026, 10, 7))).toBe(1)
+    expect(parseMonthFile(store.get('Ledgers/2026-10.md')!)).toHaveLength(1)
+    expect(parseMonthFile(store.get('Ledgers/2026-11.md')!)[0]).toMatchObject({ date: '11/07', note: 'Phone EMI' })
+  })
+})
