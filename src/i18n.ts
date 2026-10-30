@@ -115,7 +115,7 @@ const translations = {
     'modal.isRefund.hint': 'Stored as a negative expense (for refunds and returns)',
     'modal.repeatMonthly': 'Repeat monthly',
     'modal.repeatUntil': 'Until (optional)',
-    'modal.repeatHint': 'Added again on this day every month. Edit or stop it in settings.',
+    'modal.repeatHint': 'Added at the start of every following month, dated on this day. Edit or stop it in settings.',
     'err.repeatEndBeforeDate': 'End month cannot be before this transaction',
     'notice.recurringCreated': '✓ Recurring payment "{name}" added',
 
@@ -197,7 +197,7 @@ const translations = {
     'notice.recurringPosted': '✓ Posted {count} recurring payment(s)',
     'notice.recurringNone': 'No recurring payments are due',
     'settings.recurring': 'Recurring payments',
-    'settings.recurringDesc': 'Posted automatically as expenses on their day each month.',
+    'settings.recurringDesc': 'Added as expenses at the start of each month, dated on their payment day.',
     'settings.recurringAdd': 'Add recurring payment',
     'settings.recurringEmpty': 'No recurring payments yet.',
     'settings.recurringName': 'Name',

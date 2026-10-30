@@ -35,12 +35,12 @@ describe('recurringDate', () => {
 })
 
 describe('dueRecurringMonths', () => {
-  it('is not due before the payment day', () => {
-    expect(dueRecurringMonths(emi, on(2026, 10, 4))).toEqual([])
+  it('is due from the first of the month, before the payment day', () => {
+    expect(dueRecurringMonths(emi, on(2026, 10, 1))).toEqual(['2026-10'])
   })
 
-  it('is due on the payment day', () => {
-    expect(dueRecurringMonths(emi, on(2026, 10, 5))).toEqual(['2026-10'])
+  it('is not due before the start month begins', () => {
+    expect(dueRecurringMonths(emi, on(2026, 9, 30))).toEqual([])
   })
 
   it('skips months already posted', () => {
@@ -52,9 +52,9 @@ describe('dueRecurringMonths', () => {
     expect(dueRecurringMonths(r, on(2027, 1, 10))).toEqual(['2026-11', '2026-12', '2027-01'])
   })
 
-  it('does not include the current month before its day while catching up', () => {
+  it('includes the current month when catching up', () => {
     const r = { ...emi, lastPosted: '2026-10' }
-    expect(dueRecurringMonths(r, on(2027, 1, 2))).toEqual(['2026-11', '2026-12'])
+    expect(dueRecurringMonths(r, on(2027, 1, 2))).toEqual(['2026-11', '2026-12', '2027-01'])
   })
 
   it('stops after the end month', () => {
@@ -109,6 +109,6 @@ describe('recurringFromExpense', () => {
   it('treats the expense month as already posted', () => {
     const r = recurringFromExpense(tx, '2026-10-07', 'Phone EMI', undefined, 'x')
     expect(dueRecurringMonths(r, on(2026, 10, 30))).toEqual([])
-    expect(dueRecurringMonths(r, on(2026, 11, 7))).toEqual(['2026-11'])
+    expect(dueRecurringMonths(r, on(2026, 11, 1))).toEqual(['2026-11'])
   })
 })

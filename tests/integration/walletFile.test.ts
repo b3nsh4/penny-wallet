@@ -431,6 +431,14 @@ describe('postDueRecurring', () => {
     expect(wf.getConfig().recurring[0].lastPosted).toBeUndefined()
   })
 
+  it('posts on the 1st, dated on the payment day', async () => {
+    const { wf, store } = await makeWalletFile()
+    wf.updateConfig({ recurring: [{ ...emi, day: 16, startMonth: '2026-11', endMonth: undefined }] })
+    expect(await wf.postDueRecurring(new Date(2026, 9, 31))).toBe(0)
+    expect(await wf.postDueRecurring(new Date(2026, 10, 1))).toBe(1)
+    expect(parseMonthFile(store.get('Ledgers/2026-11.md')!)[0].date).toBe('11/16')
+  })
+
   it('updates the month frontmatter expense total', async () => {
     const { wf, store } = await withRecurring()
     await wf.postDueRecurring(new Date(2026, 9, 6))

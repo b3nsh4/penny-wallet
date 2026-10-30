@@ -24,14 +24,15 @@ export function recurringDate(r: RecurringPayment, ym: string): string {
 
 /**
  * Months (yyyy-mm, ascending) in which the payment is due but not yet posted.
- * A month is due once its payment day has arrived; the end month is inclusive.
+ * A month's payment is posted as soon as the month starts (dated on its payment
+ * day), so the month already shows what will be debited. The end month is inclusive.
  */
 export function dueRecurringMonths(r: RecurringPayment, today: Date): string[] {
   const current = toYearMonth(today)
   let ym = r.lastPosted && r.lastPosted >= r.startMonth ? stepMonth(r.lastPosted, 1) : r.startMonth
   const months: string[] = []
   while (ym <= current && (!r.endMonth || ym <= r.endMonth)) {
-    if (ym < current || recurringDay(r, ym) <= today.getDate()) months.push(ym)
+    months.push(ym)
     ym = stepMonth(ym, 1)
   }
   return months

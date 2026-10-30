@@ -13,7 +13,7 @@ A personal finance tracker plugin for [Obsidian](https://obsidian.md). Log expen
 - **Assets** — 3 / 6 / 12-month range selector, account balances, net asset trend, savings rate, and asset allocation pie
 - **Multiple account types** — cash, bank account, credit card (with debt tracking)
 - **Custom categories** — add your own expense and income categories
-- **Recurring payments** — EMIs and other fixed monthly expenses are posted automatically on their day, with an optional end month. Tick "Repeat monthly" when adding an expense, or manage them in settings
+- **Recurring payments** — EMIs and other fixed monthly expenses are added automatically at the start of each month, dated on their payment day, with an optional end month. Tick "Repeat monthly" when adding an expense, or manage them in settings
 - **Mobile-friendly entry** — touch-optimized transaction form with bottom-sheet pickers and an on-screen calculator
 - **iOS Shortcuts support** — add transactions via URI without opening Obsidian
 - **English only** — the original's Traditional Chinese translation is removed in this fork
