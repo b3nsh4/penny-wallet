@@ -522,3 +522,60 @@ describe('categories', () => {
     expect(parseMonthFile(store.get('Ledgers/2026-04.md')!)[0].category).toBe('Groceries')
   })
 })
+
+// ── pay periods ───────────────────────────────────────────────────────────────
+
+describe('pay periods', () => {
+  const SALARY: Transaction = { date: '10/30', type: 'income', wallet: 'Default Wallet', category: 'salary', note: '', amount: 75000 }
+
+  it('starts a period at each salary and reads across month files', async () => {
+    const { wf } = await makeWalletFile()
+    await wf.writeTransaction({ ...EXPENSE, date: '10/10', note: 'Before' }, '2026-10')
+    await wf.writeTransaction(SALARY, '2026-10')
+    await wf.writeTransaction({ ...EXPENSE, date: '10/31', note: 'After' }, '2026-10')
+    await wf.writeTransaction({ ...EXPENSE, date: '11/05', note: 'November' }, '2026-11')
+
+    const periods = await wf.getPeriods(new Date(2026, 10, 10))
+    const current = periods[periods.length - 1]
+    expect(current).toEqual({ start: '2026-10-30', end: null, label: '2026-11' })
+
+    const entries = await wf.readPeriod(current)
+    expect(entries.map(e => [e.tx.note || 'salary', e.yearMonth])).toEqual([
+      ['salary', '2026-10'], ['After', '2026-10'], ['November', '2026-11'],
+    ])
+    const before = await wf.readPeriod(periods[periods.length - 2])
+    expect(before.map(e => e.tx.note)).toEqual(['Before'])
+  })
+
+  it('a salary at the end of October brings in November recurring payments', async () => {
+    const { wf, store } = await makeWalletFile()
+    wf.updateConfig({ recurring: [{
+      id: 'r', name: 'Oven', amount: 2400, wallet: 'Default Wallet', category: 'emi',
+      day: 3, startMonth: '2026-11', lastPosted: '2026-10',
+    }] })
+    expect(await wf.postDueRecurring(new Date(2026, 9, 31))).toBe(0)
+
+    await wf.writeTransaction(SALARY, '2026-10')
+    expect(await wf.postDueRecurring(new Date(2026, 9, 31))).toBe(1)
+    expect(parseMonthFile(store.get('Ledgers/2026-11.md')!)[0]).toMatchObject({ date: '11/03', note: 'Oven' })
+  })
+
+  it('overlapping runs post a payment only once', async () => {
+    const { wf, store } = await makeWalletFile()
+    wf.updateConfig({ recurring: [{
+      id: 'r', name: 'Oven', amount: 2400, wallet: 'Default Wallet', category: 'emi', day: 3, startMonth: '2026-11',
+    }] })
+    const day = new Date(2026, 10, 1)
+    const results = await Promise.all([wf.postDueRecurring(day), wf.postDueRecurring(day), wf.postDueRecurring(day)])
+    expect(results.reduce((a, b) => a + b, 0)).toBe(1)
+    expect(parseMonthFile(store.get('Ledgers/2026-11.md')!)).toHaveLength(1)
+  })
+
+  it('salary cannot be renamed or removed', async () => {
+    const { wf } = await makeWalletFile()
+    await wf.renameCategory('income', 'salary', 'Pay')
+    await wf.removeCategory('income', 'salary')
+    expect(wf.getConfig().options.categories.income.default).toContain('salary')
+    expect(wf.getConfig().options.categories.income.custom).not.toContain('Pay')
+  })
+})

@@ -3,10 +3,6 @@ import { stepMonth } from '../utils'
 
 // ─── Recurring payments (pure functions) ─────────────────────────────────────
 
-function toYearMonth(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 function daysInMonth(ym: string): number {
   const [y, m] = ym.split('-').map(Number)
   return new Date(y, m, 0).getDate()
@@ -23,12 +19,12 @@ export function recurringDate(r: RecurringPayment, ym: string): string {
 }
 
 /**
- * Months (yyyy-mm, ascending) in which the payment is due but not yet posted.
- * A month's payment is posted as soon as the month starts (dated on its payment
- * day), so the month already shows what will be debited. The end month is inclusive.
+ * Months (yyyy-mm, ascending) up to `throughYm` in which the payment is due but
+ * not yet posted. A month's payment is posted as soon as that month (or the pay
+ * period named after it) starts, dated on its payment day. The end month is inclusive.
  */
-export function dueRecurringMonths(r: RecurringPayment, today: Date): string[] {
-  const current = toYearMonth(today)
+export function dueRecurringMonths(r: RecurringPayment, throughYm: string): string[] {
+  const current = throughYm
   let ym = r.lastPosted && r.lastPosted >= r.startMonth ? stepMonth(r.lastPosted, 1) : r.startMonth
   const months: string[] = []
   while (ym <= current && (!r.endMonth || ym <= r.endMonth)) {

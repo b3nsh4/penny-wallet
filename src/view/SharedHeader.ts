@@ -2,8 +2,8 @@ import { Events, ItemView, Platform } from 'obsidian'
 import { WalletFile } from '../io/WalletFile'
 import { TransactionModal } from '../modal/TransactionModal'
 import { MobileTransactionModal } from '../modal/MobileTransactionModal'
-import { t } from '../i18n'
-import { stepMonth, isAfterCurrentMonth } from '../utils'
+import { t, formatYearMonth } from '../i18n'
+import { Period } from '../io/periods'
 import { DASHBOARD_VIEW_TYPE } from './DashboardView'
 import { ASSET_VIEW_TYPE } from './AssetView'
 import { DETAIL_VIEW_TYPE } from './DetailView'
@@ -14,31 +14,41 @@ export type SharedHeaderOptions = {
   view: ItemView
   walletFile: WalletFile
   activeView: ActiveView
-  yearMonth: string | null
-  onMonthChange?: (newYearMonth: string) => void
-  monthDisabled?: boolean
+  /** Current pay period with its neighbours; null hides the period switcher */
+  period: { current: Period; prev: Period | null; next: Period | null } | null
+  onPeriodChange?: (period: Period) => void
+}
+
+function formatDay(date: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  return new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).format(new Date(y, m - 1, d))
+}
+
+/** e.g. "Oct 30 – Nov 27", or "Oct 30 onwards" for a period still running */
+export function formatPeriodRange(p: Period): string {
+  return p.end ? `${formatDay(p.start)} – ${formatDay(p.end)}` : `${formatDay(p.start)} ${t('period.onwards')}`
 }
 
 export function renderSharedHeader(container: HTMLElement, opts: SharedHeaderOptions): void {
   const root = container.createDiv('pw-shared-header')
 
   const monthCell = root.createDiv('pw-shared-header-month')
-  if (opts.yearMonth !== null) {
-    const ym = opts.yearMonth
-    const monthDisabled = opts.monthDisabled === true
-    if (monthDisabled) monthCell.addClass('is-disabled')
+  if (opts.period !== null) {
+    const { current, prev, next } = opts.period
 
     const prevBtn = monthCell.createEl('button', { text: '‹', cls: 'pw-nav-btn' })
-    monthCell.createEl('span', { text: ym, cls: 'pw-month-label' })
+    const labelEl = monthCell.createDiv('pw-month-label')
+    labelEl.createDiv({ text: formatYearMonth(current.label, 'short') })
+    labelEl.createDiv({ text: formatPeriodRange(current), cls: 'pw-period-range' })
     const nextBtn = monthCell.createEl('button', { text: '›', cls: 'pw-nav-btn' })
-    prevBtn.disabled = monthDisabled
-    nextBtn.disabled = monthDisabled || isAfterCurrentMonth(stepMonth(ym, 1))
+    prevBtn.disabled = prev === null
+    nextBtn.disabled = next === null
 
     prevBtn.addEventListener('click', () => {
-      if (!prevBtn.disabled) opts.onMonthChange?.(stepMonth(ym, -1))
+      if (prev) opts.onPeriodChange?.(prev)
     })
     nextBtn.addEventListener('click', () => {
-      if (!nextBtn.disabled) opts.onMonthChange?.(stepMonth(ym, 1))
+      if (next) opts.onPeriodChange?.(next)
     })
   } else {
     monthCell.addClass('is-empty')
@@ -49,7 +59,7 @@ export function renderSharedHeader(container: HTMLElement, opts: SharedHeaderOpt
     { id: 'dashboard', label: t('ui.overview'), targetType: DASHBOARD_VIEW_TYPE },
     { id: 'asset',     label: t('ui.asset'),    targetType: ASSET_VIEW_TYPE },
     { id: 'detail',    label: t('ui.detail'),   targetType: DETAIL_VIEW_TYPE,
-      state: opts.yearMonth ? { yearMonth: opts.yearMonth } : undefined },
+      state: opts.period ? { yearMonth: opts.period.current.start } : undefined },
   ]
   for (const tab of tabs) {
     const isActive = opts.activeView === tab.id

@@ -1,19 +1,19 @@
 import { Events, ItemView, WorkspaceLeaf } from 'obsidian'
 import { WalletFile } from '../io/WalletFile'
 import { t, tn, formatMonthLabel, formatYearMonth } from '../i18n'
-import { currentYearMonth } from '../utils'
 import { createMetric, renderCard } from './components'
-import { TransactionType } from '../types'
+import { Transaction, TransactionType } from '../types'
 import { DETAIL_VIEW_TYPE } from './DetailView'
-import { renderSharedHeader } from './SharedHeader'
+import { formatPeriodRange, renderSharedHeader } from './SharedHeader'
 import { Chart } from 'chart.js'
-import { MonthData, drawIncExpChart, drawPie, getMonthRangeEndingAt } from './charts'
+import { MonthData, drawIncExpChart, drawPie } from './charts'
+import { periodContaining, toDateString } from '../io/periods'
 
 export const DASHBOARD_VIEW_TYPE = 'penny-wallet-dashboard'
 
 export class DashboardView extends ItemView {
   private walletFile: WalletFile
-  private currentYearMonth: string
+  private periodRef: string   // any yyyy-mm-dd inside the period shown
   private charts: Chart[] = []
 
   private clearCharts() {
@@ -24,7 +24,7 @@ export class DashboardView extends ItemView {
   constructor(leaf: WorkspaceLeaf, walletFile: WalletFile) {
     super(leaf)
     this.walletFile = walletFile
-    this.currentYearMonth = currentYearMonth()
+    this.periodRef = toDateString(new Date())
   }
 
   getViewType() { return DASHBOARD_VIEW_TYPE }
@@ -53,21 +53,23 @@ export class DashboardView extends ItemView {
     contentEl.empty()
     contentEl.addClass('pw-dashboard')
 
-    const months = getMonthRangeEndingAt(this.currentYearMonth, 6)
+    const periods = await this.walletFile.getPeriods()
+    const period = periodContaining(periods, this.periodRef)
+    const idx = periods.indexOf(period)
+    const recent = periods.slice(Math.max(0, idx - 5), idx + 1)
 
-    const [transactions, summaries, netTimeline, walletBalances] = await Promise.all([
-      this.walletFile.readMonth(this.currentYearMonth),
-      this.walletFile.getMonthSummaries(months),
-      this.walletFile.getNetAssetTimeline(months),
+    const [recentEntries, walletBalances] = await Promise.all([
+      Promise.all(recent.map(p => this.walletFile.readPeriod(p))),
       this.walletFile.calculateAllWalletBalances(),
     ])
+    const transactions: Transaction[] = recentEntries[recentEntries.length - 1].map(e => e.tx)
 
     renderSharedHeader(contentEl, {
       view: this,
       walletFile: this.walletFile,
       activeView: 'dashboard',
-      yearMonth: this.currentYearMonth,
-      onMonthChange: (ym) => { this.currentYearMonth = ym; void this.render() },
+      period: { current: period, prev: periods[idx - 1] ?? null, next: periods[idx + 1] ?? null },
+      onPeriodChange: (p) => { this.periodRef = p.start; void this.render() },
     })
 
     const dp = this.walletFile.getConfig().decimalPlaces ?? 0
@@ -95,14 +97,21 @@ export class DashboardView extends ItemView {
     createMetric(metricsEl, t('dash.income'),  monthIncome,  'income',  { dp })
     createMetric(metricsEl, t('dash.expense'), monthExpense, 'expense', { dp })
 
-    // ── 6-month bar chart ────────────────────────────────────────────────────
-    const data: MonthData[] = months.map(ym => ({
-      monthLabel: formatMonthLabel(ym),
-      tooltipLabel: formatYearMonth(ym, 'short'),
-      income: summaries.get(ym)?.income ?? 0,
-      expense: summaries.get(ym)?.expense ?? 0,
-      net: netTimeline.get(ym) ?? null,
-    }))
+    // ── 6-period bar chart ───────────────────────────────────────────────────
+    const data: MonthData[] = recent.map((p, i) => {
+      let income = 0, expense = 0
+      for (const { tx } of recentEntries[i]) {
+        if (tx.type === 'income') income += tx.amount
+        if (tx.type === 'expense') expense += tx.amount
+      }
+      return {
+        monthLabel: formatMonthLabel(p.label),
+        tooltipLabel: `${formatYearMonth(p.label, 'short')} (${formatPeriodRange(p)})`,
+        income,
+        expense,
+        net: null,
+      }
+    })
 
     // ── 2-column grid: bar chart left, pie charts right ─────────────────────
     const grid2 = contentEl.createDiv('pw-grid-2')
@@ -131,7 +140,7 @@ export class DashboardView extends ItemView {
 
   private async openDetailWithFilter(type: TransactionType, category: string) {
     await this.openOrRevealView(DETAIL_VIEW_TYPE, {
-      state: { yearMonth: this.currentYearMonth, filterType: type, filterCategory: category, resetFilters: true },
+      state: { yearMonth: this.periodRef, filterType: type, filterCategory: category, resetFilters: true },
     })
   }
 

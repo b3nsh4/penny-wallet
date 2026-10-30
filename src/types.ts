@@ -100,8 +100,9 @@ export const DEFAULT_TRANSFER_CATEGORIES = [
   'investment_trade',
 ] as const
 
-// Categories the plugin's own logic depends on; they cannot be renamed or removed
-export const LOCKED_CATEGORIES: readonly string[] = ['credit_card_payment']
+// Categories the plugin's own logic depends on (card repayments, pay periods);
+// they cannot be renamed or removed
+export const LOCKED_CATEGORIES: readonly string[] = ['credit_card_payment', 'salary']
 
 export const DEFAULT_CONFIG: PennyWalletConfig = {
   wallets: [

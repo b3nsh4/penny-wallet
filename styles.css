@@ -1263,6 +1263,12 @@ button.pw-mobile-calculator-done {
   text-align: center;
 }
 
+.pw-period-range {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .pw-nav-right {
   margin-left: auto;
   display: flex;
