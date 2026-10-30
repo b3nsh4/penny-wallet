@@ -14,7 +14,6 @@ import {
 } from '../types'
 import type { Wallet, FrontmatterIssue, OrphanedWalletIssue, ValidationIssue, RecurringPayment } from '../types'
 import { buildRecurringTransaction, dueRecurringMonths, hasRecurringEntry } from './recurring'
-import { Period, buildPeriods, fullDate, inPeriod, periodContaining, periodMonths, toDateString } from './periods'
 
 type CategoryType = 'expense' | 'income' | 'transfer'
 
@@ -196,7 +195,6 @@ export class WalletFile {
   private app: App
   private config: PennyWalletConfig = { ...DEFAULT_CONFIG }
   private createdDefaultConfigOnLastLoad = false
-  private recurringQueue: Promise<unknown> = Promise.resolve()
 
   constructor(app: App) {
     this.app = app
@@ -477,28 +475,15 @@ export class WalletFile {
    * Post every recurring payment that has come due since it was last posted.
    * Skips months that already hold a matching entry. Returns the number posted.
    */
-  postDueRecurring(today = new Date()): Promise<number> {
-    // Runs one at a time, so overlapping triggers cannot post the same month twice
-    const run = this.recurringQueue.then(() => this.postDueRecurringNow(today))
-    this.recurringQueue = run.catch(() => undefined)
-    return run
-  }
-
-  private async postDueRecurringNow(today: Date): Promise<number> {
+  async postDueRecurring(today = new Date()): Promise<number> {
     let posted = 0
     let changed = false
     const recurring = (this.config.recurring ?? []).map(r => ({ ...r }))
-    if (recurring.length === 0) return 0
     const walletNames = new Set(this.config.wallets.map(w => w.name))
-    // Post through the month the current pay period is named after, so a salary
-    // logged at the end of October brings in November's payments
-    const calendarYm = toDateString(today).slice(0, 7)
-    const periodYm = periodContaining(await this.getPeriods(today), toDateString(today)).label
-    const throughYm = periodYm > calendarYm ? periodYm : calendarYm
     for (const r of recurring) {
       // Never post to an account that no longer exists
       if (!walletNames.has(r.wallet)) continue
-      for (const ym of dueRecurringMonths(r, throughYm)) {
+      for (const ym of dueRecurringMonths(r, today)) {
         if (!hasRecurringEntry(await this.readMonth(ym), r, ym)) {
           await this.writeTransaction(buildRecurringTransaction(r, ym), ym)
           posted++
@@ -822,36 +807,6 @@ export class WalletFile {
 
   getAllYearMonths(): string[] {
     return this.listMonthFiles().map((f: TFile) => f.basename).sort()
-  }
-
-  // ── Pay periods ──────────────────────────────────────────────────────────────
-
-  /** Salary-to-salary periods; a salary is an income in the "salary" category. */
-  async getPeriods(today = new Date()): Promise<Period[]> {
-    const salaryDates: string[] = []
-    const dataDates: string[] = []
-    for (const ym of this.getAllYearMonths()) {
-      for (const tx of await this.readMonth(ym)) {
-        const date = fullDate(ym, tx.date)
-        dataDates.push(date)
-        if (tx.type === 'income' && tx.category === 'salary') salaryDates.push(date)
-      }
-    }
-    return buildPeriods(salaryDates, dataDates, toDateString(today))
-  }
-
-  /** Transactions in a period, each with the month file it is stored in. */
-  async readPeriod(period: Period): Promise<{ tx: Transaction; yearMonth: string }[]> {
-    const existing = this.getAllYearMonths()
-    const lastYm = existing[existing.length - 1] ?? period.start.slice(0, 7)
-    const months = periodMonths(period, lastYm).filter(ym => existing.includes(ym))
-    const result: { tx: Transaction; yearMonth: string }[] = []
-    for (const ym of months) {
-      for (const tx of await this.readMonth(ym)) {
-        if (inPeriod(period, fullDate(ym, tx.date))) result.push({ tx, yearMonth: ym })
-      }
-    }
-    return result
   }
 
   /** Get all month summaries for trend view (reads frontmatter only) */

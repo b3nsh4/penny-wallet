@@ -5,20 +5,15 @@ import { MobileTransactionModal } from '../modal/MobileTransactionModal'
 import { openFilterSheet } from '../modal/BottomSheetPicker'
 import { t, translateCategory } from '../i18n'
 import { Transaction, TransactionType } from '../types'
-import { formatAmount } from '../utils'
+import { currentYearMonth, formatAmount } from '../utils'
 import { renderSharedHeader } from './SharedHeader'
-import { Period, fullDate, periodContaining, toDateString } from '../io/periods'
 import { buildAmountDisplay, buildLine3Display, buildWalletText } from './detailRow'
 
 export const DETAIL_VIEW_TYPE = 'penny-wallet-detail'
 
 export class DetailView extends ItemView {
   private walletFile: WalletFile
-  private periodRef: string   // any yyyy-mm-dd inside the period shown
-  private periods: Period[] = []
-  private period: Period | null = null
-  // Month file each cached transaction is stored in (a period can span two)
-  private txYearMonth = new WeakMap<Transaction, string>()
+  private currentYearMonth: string
   private filterTypes: Set<TransactionType> = new Set()   // empty = all
   private filterCategories: Set<string> = new Set()       // empty = all
   private filterWallets: Set<string> = new Set()          // empty = all
@@ -40,7 +35,7 @@ export class DetailView extends ItemView {
   constructor(leaf: WorkspaceLeaf, walletFile: WalletFile) {
     super(leaf)
     this.walletFile = walletFile
-    this.periodRef = toDateString(new Date())
+    this.currentYearMonth = currentYearMonth()
   }
 
   getViewType() { return DETAIL_VIEW_TYPE }
@@ -56,7 +51,7 @@ export class DetailView extends ItemView {
       this.filterDateTo = null
       this.filterSearch = ''
     }
-    if (state?.yearMonth) this.periodRef = state.yearMonth as string
+    if (state?.yearMonth) this.currentYearMonth = state.yearMonth as string
     if (state?.filterType) this.filterTypes = new Set([state.filterType as TransactionType])
     if (state?.filterCategory) this.filterCategories = new Set([state.filterCategory as string])
     await super.setState(state, result)
@@ -101,16 +96,13 @@ export class DetailView extends ItemView {
     await this.ensureCacheForCurrentFilter()
     this.cachedDp = this.walletFile.getConfig().decimalPlaces ?? 0
 
-    const idx = this.period ? this.periods.indexOf(this.period) : -1
     renderSharedHeader(contentEl, {
       view: this,
       walletFile: this.walletFile,
       activeView: 'detail',
-      period: this.period
-        ? { current: this.period, prev: this.periods[idx - 1] ?? null, next: this.periods[idx + 1] ?? null }
-        : null,
-      onPeriodChange: (p) => {
-        this.periodRef = p.start
+      yearMonth: this.currentYearMonth,
+      onMonthChange: (ym) => {
+        this.currentYearMonth = ym
         void this.render()
       },
     })
@@ -134,32 +126,22 @@ export class DetailView extends ItemView {
   }
 
   private async ensureCacheForCurrentFilter() {
-    this.periods = await this.walletFile.getPeriods()
-    this.period = periodContaining(this.periods, this.periodRef)
-    const entries = await this.walletFile.readPeriod(this.period)
-    this.txYearMonth = new WeakMap()
-    for (const { tx, yearMonth } of entries) this.txYearMonth.set(tx, yearMonth)
-    this.cachedTransactions = entries.map(e => e.tx)
+    this.cachedTransactions = (await this.walletFile.readMonth(this.currentYearMonth))
       .sort((a, b) => {
-        const dateCompare = this.txFullDate(b).localeCompare(this.txFullDate(a))
+        const dateCompare = b.date.localeCompare(a.date)
         if (dateCompare !== 0) return dateCompare
         if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt)
         return 0
       })
   }
 
-  private txFullDate(tx: Transaction): string {
-    return fullDate(this.txYearMonth.get(tx) ?? this.periodRef.slice(0, 7), tx.date)
-  }
-
   private getMonthDateDefaults(): { from: string; to: string } {
-    const p = this.period
-    if (!p) { const today = toDateString(new Date()); return { from: today, to: today } }
-    // A running period ends at today or its latest entry, whichever is later
-    const latest = this.cachedTransactions.map(tx => this.txFullDate(tx)).sort().pop()
-    const today = toDateString(new Date())
-    const openEnd = latest && latest > today ? latest : today
-    return { from: p.start, to: p.end ?? openEnd }
+    const [y, m] = this.currentYearMonth.split('-').map(Number)
+    const last = new Date(y, m, 0).getDate()
+    return {
+      from: `${this.currentYearMonth}-01`,
+      to: `${this.currentYearMonth}-${String(last).padStart(2, '0')}`,
+    }
   }
 
   private renderCategoryDropdown(container: HTMLElement): void {
@@ -711,7 +693,8 @@ export class DetailView extends ItemView {
        && !this.filterWallets.has(tx.fromWallet ?? '')
        && !this.filterWallets.has(tx.toWallet ?? '')) return false
       if (this.filterDateFrom || this.filterDateTo) {
-        const txFullDate = this.txFullDate(tx)
+        const txDay = tx.date.split('/')[1] ?? ''
+        const txFullDate = `${this.currentYearMonth}-${txDay}`
         if (this.filterDateFrom && txFullDate < this.filterDateFrom) return false
         if (this.filterDateTo   && txFullDate > this.filterDateTo)   return false
       }
@@ -796,7 +779,7 @@ export class DetailView extends ItemView {
         this.walletFile,
         {},
         tx,
-        this.txYearMonth.get(tx) ?? this.periodRef.slice(0, 7),
+        this.currentYearMonth,
         () => (this.app.workspace as Events).trigger('penny-wallet:refresh'),
         null,
       ).open()

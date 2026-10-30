@@ -1,4 +1,4 @@
-import { Events, Notice, ObsidianProtocolData, Platform, Plugin, WorkspaceLeaf } from 'obsidian'
+import { Notice, ObsidianProtocolData, Platform, Plugin, WorkspaceLeaf } from 'obsidian'
 import { WalletFile } from './io/WalletFile'
 import { TransactionModal } from './modal/TransactionModal'
 import { MobileTransactionModal } from './modal/MobileTransactionModal'
@@ -57,8 +57,6 @@ export default class PennyWalletPlugin extends Plugin {
       await this.postRecurring(false)
       // Obsidian can stay open for days, so check again every hour
       this.registerInterval(window.setInterval(() => { void this.postRecurring(false) }, 60 * 60 * 1000))
-      // A salary entry starts a new pay period, which can bring in its recurring payments
-      this.registerEvent((this.app.workspace as Events).on('penny-wallet:refresh', () => { void this.postRecurring(false) }))
 
       if (this.walletFile.getConfig().autoValidateOnLoad) {
         void this.runValidation(false)
@@ -118,7 +116,7 @@ export default class PennyWalletPlugin extends Plugin {
       params,
       null,
       null,
-      () => this.app.workspace.trigger('penny-wallet:refresh'),
+      () => this.refreshViews(),
     ).open()
   }
 

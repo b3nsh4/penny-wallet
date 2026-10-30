@@ -66,7 +66,7 @@ export class AssetView extends ItemView {
       view: this,
       walletFile: this.walletFile,
       activeView: 'asset',
-      period: null,
+      yearMonth: null,
     })
 
     // ── 2-column grid ────────────────────────────────────────────────────────
