@@ -134,6 +134,7 @@ describe('validateTransactionForm', () => {
     tags: [],
     folderName: 'PennyWallet',
     autoValidateOnLoad: true,
+    recurring: [],
     options: {} as never,
   } as PennyWalletConfig
 

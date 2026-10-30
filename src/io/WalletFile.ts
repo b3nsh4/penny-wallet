@@ -12,6 +12,7 @@ import {
   DEFAULT_TRANSFER_CATEGORIES,
 } from '../types'
 import type { Wallet, FrontmatterIssue, OrphanedWalletIssue, ValidationIssue } from '../types'
+import { buildRecurringTransaction, dueRecurringMonths, hasRecurringEntry } from './recurring'
 
 const ROOT_CONFIG_PATH = normalizePath('.penny-wallet.json')
 const TABLE_HEADER = `| Date | Type | Wallet | From | To | Category | Note | Tags | Amount | CreatedAt |
@@ -408,6 +409,37 @@ export class WalletFile {
     }
     const summary = this.computeSummary(transactions)
     await this.writeMonthFile(yearMonth, buildMonthContent(yearMonth, transactions, summary))
+  }
+
+  /**
+   * Post every recurring payment that has come due since it was last posted.
+   * Skips months that already hold a matching entry. Returns the number posted.
+   */
+  async postDueRecurring(today = new Date()): Promise<number> {
+    let posted = 0
+    let changed = false
+    const recurring = (this.config.recurring ?? []).map(r => ({ ...r }))
+    for (const r of recurring) {
+      for (const ym of dueRecurringMonths(r, today)) {
+        if (!hasRecurringEntry(await this.readMonth(ym), r, ym)) {
+          await this.writeTransaction(buildRecurringTransaction(r, ym), ym)
+          posted++
+        }
+        r.lastPosted = ym
+        changed = true
+      }
+    }
+    if (changed) {
+      // Merge by id so edits made in settings while posting are kept
+      const lastPosted = new Map(recurring.map(r => [r.id, r.lastPosted]))
+      this.config = {
+        ...this.config,
+        recurring: this.config.recurring.map(r =>
+          lastPosted.has(r.id) ? { ...r, lastPosted: lastPosted.get(r.id) } : r),
+      }
+      await this.saveConfig()
+    }
+    return posted
   }
 
   /**

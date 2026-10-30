@@ -22,6 +22,18 @@ export interface Wallet {
   includeInNetAsset: boolean  // active wallets always true; archived wallets can be toggled
 }
 
+export interface RecurringPayment {
+  id: string
+  name: string        // written as the transaction note
+  amount: number
+  wallet: string
+  category: string
+  day: number         // 1-31; clamped to the last day of shorter months
+  startMonth: string  // yyyy-mm, first month to post
+  endMonth?: string   // yyyy-mm, last month to post (inclusive)
+  lastPosted?: string // yyyy-mm of the most recent month posted
+}
+
 export interface MonthSummary {
   income: number
   expense: number
@@ -55,6 +67,7 @@ export interface PennyWalletConfig {
   options: PennyWalletOptions
   tags: string[]
   autoValidateOnLoad: boolean
+  recurring: RecurringPayment[]
 }
 
 export interface TransactionModalParams {
@@ -122,6 +135,7 @@ export const DEFAULT_CONFIG: PennyWalletConfig = {
   },
   tags: [],
   autoValidateOnLoad: true,
+  recurring: [],
 }
 
 export interface FrontmatterIssue {

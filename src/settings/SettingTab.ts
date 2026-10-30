@@ -3,7 +3,10 @@ import Sortable from 'sortablejs'
 import { WalletFile } from '../io/WalletFile'
 import { ConfirmModal } from '../modal/ConfirmModal'
 import { WalletEditModal } from '../modal/WalletEditModal'
-import { Wallet, WalletBalance, WalletType } from '../types'
+import { RecurringEditModal } from '../modal/RecurringEditModal'
+import { translateCategory } from '../i18n'
+import { formatAmount, currentYearMonth } from '../utils'
+import { RecurringPayment, Wallet, WalletBalance, WalletType } from '../types'
 import { t, tn } from '../i18n'
 
 export class PennyWalletSettingTab extends PluginSettingTab {
@@ -31,6 +34,7 @@ export class PennyWalletSettingTab extends PluginSettingTab {
       this.renderActiveWallets(walletBalances, walletsWithTransactions)
       this.renderArchivedWallets()
       this.renderAddWallet()
+      this.renderRecurring()
       this.renderCategories()
 
       if (restoreScrollTop !== undefined) {
@@ -382,6 +386,74 @@ export class PennyWalletSettingTab extends PluginSettingTab {
 
     addBtn.addEventListener('click', () => { void submitAddWallet() })
     form.bindSubmitKey(() => { void submitAddWallet() })
+  }
+
+  private renderRecurring() {
+    const config = this.walletFile.getConfig()
+    const { containerEl } = this
+    const recurring = config.recurring ?? []
+    const dp = config.decimalPlaces ?? 0
+
+    new Setting(containerEl)
+      .setName(t('settings.recurring'))
+      .setDesc(t('settings.recurringDesc'))
+      .setHeading()
+    const group = containerEl.createDiv('pw-settings-group')
+
+    const save = async (next: RecurringPayment[]) => {
+      const scrollTop = this.getSettingsScrollTop()
+      this.walletFile.updateConfig({ recurring: next })
+      await this.walletFile.saveConfig()
+      // Post right away in case the new or edited payment is already due
+      if (await this.walletFile.postDueRecurring() > 0) {
+        this.app.workspace.trigger('penny-wallet:refresh')
+      }
+      this.display(scrollTop)
+    }
+
+    if (recurring.length === 0) {
+      group.createEl('p', { text: t('settings.recurringEmpty'), cls: 'pw-balance-hint' })
+    }
+
+    for (const r of recurring) {
+      const parts = [
+        formatAmount(r.amount, dp),
+        r.wallet,
+        translateCategory(r.category),
+        tn('settings.recurringDayLabel', { day: String(r.day) }),
+      ]
+      if (r.endMonth) {
+        parts.push(r.endMonth < currentYearMonth()
+          ? t('settings.recurringEnded')
+          : tn('settings.recurringUntil', { end: r.endMonth }))
+      }
+      new Setting(group)
+        .setName(r.name)
+        .setDesc(parts.join(' · '))
+        .addExtraButton(btn => btn
+          .setIcon('pencil')
+          .setTooltip(t('ui.edit'))
+          .onClick(() => {
+            new RecurringEditModal(this.app, config, r, (updated) =>
+              save(recurring.map(x => x.id === updated.id ? updated : x)),
+            ).open()
+          }))
+        .addExtraButton(btn => btn
+          .setIcon('trash')
+          .setTooltip(t('ui.delete'))
+          .onClick(() => {
+            new ConfirmModal(this.app, tn('confirm.deleteRecurring', { name: r.name }), () =>
+              save(recurring.filter(x => x.id !== r.id)),
+            ).open()
+          }))
+    }
+
+    new Setting(group).addButton(btn => btn
+      .setButtonText(t('settings.recurringAdd'))
+      .setCta()
+      .onClick(() => {
+        new RecurringEditModal(this.app, config, null, (item) => save([...recurring, item])).open()
+      }))
   }
 
   private renderCategories() {

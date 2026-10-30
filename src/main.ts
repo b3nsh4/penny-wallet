@@ -8,7 +8,7 @@ import { AssetView, ASSET_VIEW_TYPE } from './view/AssetView'
 import { PennyWalletSettingTab } from './settings/SettingTab'
 import { ValidationModal } from './modal/ValidationModal'
 import { TransactionModalParams, TransactionType } from './types'
-import { initI18n, t } from './i18n'
+import { initI18n, t, tn } from './i18n'
 
 export default class PennyWalletPlugin extends Plugin {
   walletFile!: WalletFile
@@ -30,6 +30,7 @@ export default class PennyWalletPlugin extends Plugin {
     this.addCommand({ id: 'open-detail', name: 'Open transactions', callback: () => { void this.openDetailView() } })
     this.addCommand({ id: 'add-transaction', name: 'Add transaction', callback: () => this.openTransactionModal() })
     this.addCommand({ id: 'validate-data', name: 'Validate data', callback: () => void this.runValidation(true) })
+    this.addCommand({ id: 'post-recurring', name: 'Post due recurring payments', callback: () => void this.postRecurring(true) })
     this.addCommand({ id: 'refresh', name: 'Refresh views', callback: () => {
       this.app.workspace.trigger('penny-wallet:refresh')
     } })
@@ -55,6 +56,10 @@ export default class PennyWalletPlugin extends Plugin {
         new Notice(t('onboard.welcome'), 8000)
       }
 
+      await this.postRecurring(false)
+      // Obsidian can stay open for days, so check again every hour
+      this.registerInterval(window.setInterval(() => { void this.postRecurring(false) }, 60 * 60 * 1000))
+
       if (this.walletFile.getConfig().autoValidateOnLoad) {
         void this.runValidation(false)
       }
@@ -73,6 +78,22 @@ export default class PennyWalletPlugin extends Plugin {
       return
     }
     new ValidationModal(this.app, this.walletFile, issues).open()
+  }
+
+  // ── Recurring payments ──────────────────────────────────────────────────────
+
+  async postRecurring(showNoticeIfNone: boolean) {
+    try {
+      const posted = await this.walletFile.postDueRecurring()
+      if (posted > 0) {
+        new Notice(tn('notice.recurringPosted', { count: String(posted) }))
+        this.refreshViews()
+      } else if (showNoticeIfNone) {
+        new Notice(t('notice.recurringNone'))
+      }
+    } catch (e) {
+      console.error('PennyWallet: failed to post recurring payments', e)
+    }
   }
 
   // ── Open Views ──────────────────────────────────────────────────────────────

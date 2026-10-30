@@ -405,3 +405,49 @@ describe('getLocaleCashName', () => {
     expect(config.defaultWallet).toBe('預設錢包')
   })
 })
+
+// ── postDueRecurring ──────────────────────────────────────────────────────────
+
+describe('postDueRecurring', () => {
+  const emi = {
+    id: 'r1', name: 'Bike EMI', amount: 5000, wallet: 'Default Wallet',
+    category: 'emi', day: 5, startMonth: '2026-10', endMonth: '2026-11',
+  }
+
+  async function withRecurring(initialFiles: Record<string, string> = {}) {
+    const ctx = await makeWalletFile(initialFiles)
+    ctx.wf.updateConfig({ recurring: [emi] })
+    return ctx
+  }
+
+  it('posts each due month once and records lastPosted', async () => {
+    const { wf, store } = await withRecurring()
+    expect(await wf.postDueRecurring(new Date(2026, 11, 20))).toBe(2)
+
+    const oct = parseMonthFile(store.get('Ledgers/2026-10.md')!)
+    expect(oct).toHaveLength(1)
+    expect(oct[0]).toMatchObject({ date: '10/05', type: 'expense', note: 'Bike EMI', amount: 5000 })
+    expect(store.has('Ledgers/2026-11.md')).toBe(true)
+    expect(store.has('Ledgers/2026-12.md')).toBe(false)
+    expect(wf.getConfig().recurring[0].lastPosted).toBe('2026-11')
+    expect(JSON.parse(store.get('.penny-wallet.json')!).recurring[0].lastPosted).toBe('2026-11')
+
+    expect(await wf.postDueRecurring(new Date(2026, 11, 20))).toBe(0)
+    expect(parseMonthFile(store.get('Ledgers/2026-10.md')!)).toHaveLength(1)
+  })
+
+  it('does not duplicate an entry already in the month file', async () => {
+    const { wf, store } = await withRecurring()
+    await wf.writeTransaction({ date: '10/05', type: 'expense', wallet: 'Default Wallet', category: 'emi', note: 'Bike EMI', amount: 5000 }, '2026-10')
+
+    expect(await wf.postDueRecurring(new Date(2026, 9, 6))).toBe(0)
+    expect(parseMonthFile(store.get('Ledgers/2026-10.md')!)).toHaveLength(1)
+    expect(wf.getConfig().recurring[0].lastPosted).toBe('2026-10')
+  })
+
+  it('updates the month frontmatter expense total', async () => {
+    const { wf, store } = await withRecurring()
+    await wf.postDueRecurring(new Date(2026, 9, 6))
+    expect(parseFrontmatter(store.get('Ledgers/2026-10.md')!).expense).toBe(5000)
+  })
+})
