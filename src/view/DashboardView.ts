@@ -90,15 +90,10 @@ export class DashboardView extends ItemView {
       if (tx.type === 'income') monthIncome += tx.amount
       if (tx.type === 'expense') monthExpense += tx.amount
     }
-    const monthBalance = monthIncome - monthExpense
 
-    const metricsEl = contentEl.createDiv('pw-metrics')
+    const metricsEl = contentEl.createDiv('pw-metrics pw-month-metrics')
     createMetric(metricsEl, t('dash.income'),  monthIncome,  'income',  { dp })
     createMetric(metricsEl, t('dash.expense'), monthExpense, 'expense', { dp })
-    createMetric(metricsEl, t('dash.balance'), monthBalance,
-      monthBalance >= 0 ? 'positive' : 'negative',
-      { dp },
-    )
 
     // ── 6-month bar chart ────────────────────────────────────────────────────
     const data: MonthData[] = months.map(ym => ({
