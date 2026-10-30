@@ -255,21 +255,11 @@ export function drawNetChart(
 // ─── Pie chart ────────────────────────────────────────────────────────────────
 
 export function filterPieData(data: Map<string, number>): Map<string, number> {
-  if (data.size === 0) return new Map()
-  const total = [...data.values()].reduce((a, b) => a + b, 0)
-  if (total === 0) return new Map()
-
+  // Every category gets its own slice; only empty or net-negative ones (e.g. all refunds) are dropped
   const filtered = new Map<string, number>()
-  let otherTotal = 0
-
   for (const [key, value] of data) {
-    if ((value / total) * 100 >= 1) {
-      filtered.set(key, value)
-    } else {
-      otherTotal += value
-    }
+    if (value > 0) filtered.set(key, value)
   }
-  if (otherTotal > 0) filtered.set('__other__', otherTotal)
   return filtered
 }
 
