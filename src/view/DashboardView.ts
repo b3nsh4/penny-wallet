@@ -1,6 +1,6 @@
 import { Events, ItemView, WorkspaceLeaf } from 'obsidian'
 import { WalletFile } from '../io/WalletFile'
-import { t, formatMonthLabel, formatYearMonth } from '../i18n'
+import { t, tn, formatMonthLabel, formatYearMonth } from '../i18n'
 import { currentYearMonth } from '../utils'
 import { createMetric, renderCard } from './components'
 import { TransactionType } from '../types'
@@ -55,10 +55,11 @@ export class DashboardView extends ItemView {
 
     const months = getMonthRangeEndingAt(this.currentYearMonth, 6)
 
-    const [transactions, summaries, netTimeline] = await Promise.all([
+    const [transactions, summaries, netTimeline, walletBalances] = await Promise.all([
       this.walletFile.readMonth(this.currentYearMonth),
       this.walletFile.getMonthSummaries(months),
       this.walletFile.getNetAssetTimeline(months),
+      this.walletFile.calculateAllWalletBalances(),
     ])
 
     renderSharedHeader(contentEl, {
@@ -70,6 +71,18 @@ export class DashboardView extends ItemView {
     })
 
     const dp = this.walletFile.getConfig().decimalPlaces ?? 0
+
+    // ── Account balances (current, each account on its own) ─────────────────
+    const accountsEl = contentEl.createDiv('pw-metrics pw-account-metrics')
+    for (const { wallet, balance } of walletBalances) {
+      if (wallet.status === 'archived') continue
+      if (wallet.type === 'creditCard') {
+        const label = balance >= 0 ? tn('dash.cardOwed', { name: wallet.name }) : tn('dash.cardCredit', { name: wallet.name })
+        createMetric(accountsEl, label, balance, 'neutral', { dp })
+      } else {
+        createMetric(accountsEl, wallet.name, balance, balance < 0 ? 'negative' : 'neutral', { dp, hero: true })
+      }
+    }
 
     // ── Monthly metrics ──────────────────────────────────────────────────────
     let monthIncome = 0, monthExpense = 0
@@ -84,7 +97,7 @@ export class DashboardView extends ItemView {
     createMetric(metricsEl, t('dash.expense'), monthExpense, 'expense', { dp })
     createMetric(metricsEl, t('dash.balance'), monthBalance,
       monthBalance >= 0 ? 'positive' : 'negative',
-      { dp, hero: true },
+      { dp },
     )
 
     // ── 6-month bar chart ────────────────────────────────────────────────────
