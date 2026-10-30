@@ -223,14 +223,9 @@ export class WalletFile {
         return this.config
       }
 
-      // Truly first launch: create locale-aware default config
+      // Truly first launch: create default config
       await this.ensureFolder()
-      const cashName = this.getLocaleCashName()
-      this.config = {
-        ...DEFAULT_CONFIG,
-        wallets: [{ ...DEFAULT_CONFIG.wallets[0], name: cashName }],
-        defaultWallet: cashName,
-      }
+      this.config = { ...DEFAULT_CONFIG }
       await this.saveConfig()
       this.createdDefaultConfigOnLastLoad = true
       return this.config
@@ -821,14 +816,6 @@ export class WalletFile {
       net += w.type === 'creditCard' ? -balance : balance
     }
     return net
-  }
-
-  private getLocaleCashName(): string {
-    try {
-      const lang = (window as Window & { moment?: { locale?: () => string } }).moment?.locale?.() ?? ''
-      if (lang.startsWith('zh')) return '預設錢包'
-    } catch { /* ignore */ }
-    return 'Default Wallet'
   }
 
 }

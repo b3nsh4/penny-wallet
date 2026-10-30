@@ -8,14 +8,12 @@ import { AssetView, ASSET_VIEW_TYPE } from './view/AssetView'
 import { PennyWalletSettingTab } from './settings/SettingTab'
 import { ValidationModal } from './modal/ValidationModal'
 import { TransactionModalParams, TransactionType } from './types'
-import { initI18n, t, tn } from './i18n'
+import { t, tn } from './i18n'
 
 export default class PennyWalletPlugin extends Plugin {
   walletFile!: WalletFile
 
   async onload() {
-    initI18n()
-
     this.walletFile = new WalletFile(this.app)
 
     // ── All synchronous registrations FIRST (so ribbon/commands survive restart) ──

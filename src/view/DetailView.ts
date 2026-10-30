@@ -634,7 +634,7 @@ export class DetailView extends ItemView {
       }
     }
 
-    // ── 日期範圍 ──
+    // ── Date range ──
     {
       const sec = sheet.createDiv('pw-filter-section')
       sec.createDiv({ cls: 'pw-filter-label', text: t('detail.filterDateRange') })

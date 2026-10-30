@@ -384,28 +384,6 @@ describe('getMonthSummaries', () => {
   })
 })
 
-// ── getLocaleCashName (via loadConfig first-launch) ───────────────────────────
-
-describe('getLocaleCashName', () => {
-  beforeEach(() => {
-    // @ts-expect-error window.moment is set in test setup
-    window.moment = { locale: () => 'zh-TW' }
-  })
-  afterEach(() => {
-    // @ts-expect-error
-    window.moment = { locale: () => 'en' }
-  })
-
-  it('uses Chinese wallet name when locale is zh', async () => {
-    const { app } = createMockApp()   // no config file → first launch
-    const wf = new WalletFile(app)
-    await wf.loadConfig()
-    const config = wf.getConfig()
-    expect(config.wallets[0].name).toBe('預設錢包')
-    expect(config.defaultWallet).toBe('預設錢包')
-  })
-})
-
 // ── postDueRecurring ──────────────────────────────────────────────────────────
 
 describe('postDueRecurring', () => {
