@@ -10,9 +10,12 @@ import {
   DEFAULT_EXPENSE_CATEGORIES,
   DEFAULT_INCOME_CATEGORIES,
   DEFAULT_TRANSFER_CATEGORIES,
+  LOCKED_CATEGORIES,
 } from '../types'
 import type { Wallet, FrontmatterIssue, OrphanedWalletIssue, ValidationIssue, RecurringPayment } from '../types'
 import { buildRecurringTransaction, dueRecurringMonths, hasRecurringEntry } from './recurring'
+
+type CategoryType = 'expense' | 'income' | 'transfer'
 
 const ROOT_CONFIG_PATH = normalizePath('.penny-wallet.json')
 const TABLE_HEADER = `| Date | Type | Wallet | From | To | Category | Note | Tags | Amount | CreatedAt |
@@ -245,7 +248,7 @@ export class WalletFile {
     return this.createdDefaultConfigOnLastLoad
   }
 
-  updateCustomCategories(type: 'expense' | 'income' | 'transfer', custom: string[]): void {
+  updateCustomCategories(type: CategoryType, custom: string[]): void {
     const { options } = this.config
     this.config = {
       ...this.config,
@@ -261,16 +264,73 @@ export class WalletFile {
 
   private normalizeOptions(parsed: Partial<PennyWalletConfig>): PennyWalletOptions {
     const p = parsed.options
+    const cats = p?.categories as Record<string, { default?: unknown; custom?: string[] }> | undefined
+    // Keep only the built-ins still saved in the config, so removed ones stay removed.
+    // Locked categories are always restored.
+    const defaults = (type: CategoryType, builtIn: readonly string[]) => {
+      const saved = cats?.[type]?.default
+      return builtIn.filter(k =>
+        !Array.isArray(saved) || saved.includes(k) || LOCKED_CATEGORIES.includes(k))
+    }
     return {
       types: {
         default: ['expense', 'income', 'transfer'],
         custom: p?.types?.custom ?? [],
       },
       categories: {
-        expense:  { default: [...DEFAULT_EXPENSE_CATEGORIES],  custom: p?.categories?.expense?.custom  ?? [] },
-        income:   { default: [...DEFAULT_INCOME_CATEGORIES],   custom: p?.categories?.income?.custom   ?? [] },
-        transfer: { default: [...DEFAULT_TRANSFER_CATEGORIES], custom: (p?.categories as Record<string, { custom?: string[] }>)?.['transfer']?.custom ?? [] },
+        expense:  { default: defaults('expense', DEFAULT_EXPENSE_CATEGORIES),   custom: cats?.['expense']?.custom  ?? [] },
+        income:   { default: defaults('income', DEFAULT_INCOME_CATEGORIES),     custom: cats?.['income']?.custom   ?? [] },
+        transfer: { default: defaults('transfer', DEFAULT_TRANSFER_CATEGORIES), custom: cats?.['transfer']?.custom ?? [] },
       },
+    }
+  }
+
+  /** Remove a category from its list. Transactions that use it keep their value. */
+  async removeCategory(type: CategoryType, key: string): Promise<void> {
+    if (LOCKED_CATEGORIES.includes(key)) return
+    const group = this.config.options.categories[type]
+    this.setCategoryGroup(type, {
+      default: group.default.filter(k => k !== key),
+      custom: group.custom.filter(k => k !== key),
+    })
+    await this.saveConfig()
+  }
+
+  /**
+   * Rename a category (built-in or custom) and update every transaction and
+   * recurring payment that uses it. A renamed built-in becomes a custom category.
+   */
+  async renameCategory(type: CategoryType, oldKey: string, newName: string): Promise<void> {
+    if (LOCKED_CATEGORIES.includes(oldKey) || oldKey === newName) return
+    const group = this.config.options.categories[type]
+    const custom = group.custom.includes(oldKey)
+      ? group.custom.map(k => k === oldKey ? newName : k)
+      : [...group.custom, newName]
+    this.setCategoryGroup(type, { default: group.default.filter(k => k !== oldKey), custom })
+    if (type === 'expense') {
+      this.config = {
+        ...this.config,
+        recurring: (this.config.recurring ?? []).map(r => r.category === oldKey ? { ...r, category: newName } : r),
+      }
+    }
+    await this.saveConfig()
+
+    await Promise.all(this.getAllYearMonths().map(async (ym) => {
+      const content = await this.readMonthFile(ym)
+      if (!content) return
+      const transactions = parseMonthFile(content)
+      if (!transactions.some(tx => tx.type === type && tx.category === oldKey)) return
+      const updated = transactions.map(tx =>
+        tx.type === type && tx.category === oldKey ? { ...tx, category: newName } : tx)
+      await this.writeMonthFile(ym, buildMonthContent(ym, updated, this.computeSummary(updated)))
+    }))
+  }
+
+  private setCategoryGroup(type: CategoryType, group: { default: string[]; custom: string[] }): void {
+    const { options } = this.config
+    this.config = {
+      ...this.config,
+      options: { ...options, categories: { ...options.categories, [type]: group } },
     }
   }
 

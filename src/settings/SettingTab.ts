@@ -6,7 +6,10 @@ import { WalletEditModal } from '../modal/WalletEditModal'
 import { RecurringEditModal } from '../modal/RecurringEditModal'
 import { translateCategory } from '../i18n'
 import { formatAmount, currentYearMonth } from '../utils'
-import { RecurringPayment, Wallet, WalletBalance, WalletType } from '../types'
+import { LOCKED_CATEGORIES, PennyWalletConfig, RecurringPayment, Wallet, WalletBalance, WalletType } from '../types'
+import { TextPromptModal } from '../modal/TextPromptModal'
+
+type CategoryType = 'expense' | 'income' | 'transfer'
 import { t, tn } from '../i18n'
 
 export class PennyWalletSettingTab extends PluginSettingTab {
@@ -465,83 +468,84 @@ export class PennyWalletSettingTab extends PluginSettingTab {
     const config = this.walletFile.getConfig()
     const { containerEl } = this
 
-    new Setting(containerEl).setName(t('settings.customCategories')).setHeading()
+    new Setting(containerEl)
+      .setName(t('settings.customCategories'))
+      .setDesc(t('settings.categoryHint'))
+      .setHeading()
     const cardEl = containerEl.createDiv('pw-card pw-category-card')
 
-    const expenseCustom = config.options.categories.expense.custom
-    const incomeCustom = config.options.categories.income.custom
-    const transferCustom = config.options.categories.transfer.custom
-
-    this.renderCategorySection(
-      cardEl,
-      t('settings.expenseCategories'),
-      expenseCustom,
-      [...incomeCustom, ...transferCustom],
-      config.options.categories.expense.default,
-      async (updated) => {
-        const scrollTop = this.getSettingsScrollTop()
-        this.walletFile.updateCustomCategories('expense', updated)
-        await this.walletFile.saveConfig()
-        this.app.workspace.trigger('penny-wallet:refresh')
-        this.display(scrollTop)
-      },
-    )
-
-    cardEl.createEl('hr', { cls: 'pw-category-divider' })
-
-    this.renderCategorySection(
-      cardEl,
-      t('settings.incomeCategories'),
-      incomeCustom,
-      [...expenseCustom, ...transferCustom],
-      config.options.categories.income.default,
-      async (updated) => {
-        const scrollTop = this.getSettingsScrollTop()
-        this.walletFile.updateCustomCategories('income', updated)
-        await this.walletFile.saveConfig()
-        this.app.workspace.trigger('penny-wallet:refresh')
-        this.display(scrollTop)
-      },
-    )
-
-    cardEl.createEl('hr', { cls: 'pw-category-divider' })
-
-    this.renderCategorySection(
-      cardEl,
-      t('settings.transferCategories'),
-      transferCustom,
-      [...expenseCustom, ...incomeCustom],
-      config.options.categories.transfer.default,
-      async (updated) => {
-        const scrollTop = this.getSettingsScrollTop()
-        this.walletFile.updateCustomCategories('transfer', updated)
-        await this.walletFile.saveConfig()
-        this.app.workspace.trigger('penny-wallet:refresh')
-        this.display(scrollTop)
-      },
-    )
+    const types: { type: CategoryType; title: string }[] = [
+      { type: 'expense',  title: t('settings.expenseCategories') },
+      { type: 'income',   title: t('settings.incomeCategories') },
+      { type: 'transfer', title: t('settings.transferCategories') },
+    ]
+    types.forEach(({ type, title }, i) => {
+      if (i > 0) cardEl.createEl('hr', { cls: 'pw-category-divider' })
+      this.renderCategorySection(cardEl, type, title, config)
+    })
   }
 
   private renderCategorySection(
     container: HTMLElement,
+    type: CategoryType,
     title: string,
-    categories: string[],
-    otherCategories: string[],
-    defaultKeys: readonly string[],
-    onChange: (updated: string[]) => void | Promise<void>,
+    config: PennyWalletConfig,
   ) {
+    const group = config.options.categories[type]
+    const keys = [...group.default, ...group.custom]
+
+    const refresh = (scrollTop: number) => {
+      this.app.workspace.trigger('penny-wallet:refresh')
+      this.display(scrollTop)
+    }
+
+    // A name is taken if it matches any category key or label, in any list
+    const isTaken = (name: string, except?: string) => {
+      const lower = name.toLowerCase()
+      return (['expense', 'income', 'transfer'] as CategoryType[]).some(tp => {
+        const g = config.options.categories[tp]
+        return [...g.default, ...g.custom].some(k =>
+          k !== except && (k.toLowerCase() === lower || translateCategory(k).toLowerCase() === lower))
+      })
+    }
+    const checkName = (name: string, except?: string): boolean => {
+      if (!name) return false
+      if (name.includes('|') || name === '-') { new Notice(t('err.categoryInvalid')); return false }
+      if (isTaken(name, except)) { new Notice(t('err.categoryExists')); return false }
+      return true
+    }
+
     container.createEl('div', { text: title, cls: 'pw-setting-input-subtitle' })
 
     const tagsEl = container.createDiv('pw-category-tags')
-    for (const cat of categories) {
-      const tag = tagsEl.createDiv('pw-category-tag')
-      tag.createEl('span', { text: cat })
+    for (const key of keys) {
+      const label = translateCategory(key)
+      const locked = LOCKED_CATEGORIES.includes(key)
+      const tag = tagsEl.createDiv('pw-category-tag' + (locked ? '' : ' is-editable'))
+      const nameEl = tag.createEl('span', { text: label })
+      if (locked) continue
+
+      nameEl.setAttribute('title', t('settings.renameCategory'))
+      nameEl.addEventListener('click', () => {
+        new TextPromptModal(this.app, t('settings.renameCategory'), label, async (name) => {
+          if (name === label || !checkName(name, key)) return
+          const scrollTop = this.getSettingsScrollTop()
+          await this.walletFile.renameCategory(type, key, name)
+          new Notice(tn('notice.categoryRenamed', { name }))
+          refresh(scrollTop)
+        }).open()
+      })
+
       const removeBtn = tag.createEl('button', { cls: 'pw-tag-remove' })
       const svg = removeBtn.createSvg('svg', { attr: { viewBox: '0 0 10 10', width: '10', height: '10', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round' } })
       svg.createSvg('line', { attr: { x1: '2', y1: '2', x2: '8', y2: '8' } })
       svg.createSvg('line', { attr: { x1: '8', y1: '2', x2: '2', y2: '8' } })
       removeBtn.addEventListener('click', () => {
-        void onChange(categories.filter(c => c !== cat))
+        new ConfirmModal(this.app, tn('confirm.removeCategory', { name: label }), async () => {
+          const scrollTop = this.getSettingsScrollTop()
+          await this.walletFile.removeCategory(type, key)
+          refresh(scrollTop)
+        }).open()
       })
     }
 
@@ -554,11 +558,13 @@ export class PennyWalletSettingTab extends PluginSettingTab {
     const addBtn = addRow.createEl('button', { text: t('settings.addCategory'), cls: 'mod-cta' })
     addBtn.addEventListener('click', () => {
       const val = input.value.trim()
-      if (!val) return
-      if (defaultKeys.includes(val))     { new Notice(t('err.categoryExists')); return }
-      if (categories.includes(val))      { new Notice(t('err.categoryExists')); return }
-      if (otherCategories.includes(val)) { new Notice(t('err.categoryExistsInOtherList')); return }
-      void onChange([...categories, val])
+      if (!checkName(val)) return
+      void (async () => {
+        const scrollTop = this.getSettingsScrollTop()
+        this.walletFile.updateCustomCategories(type, [...group.custom, val])
+        await this.walletFile.saveConfig()
+        refresh(scrollTop)
+      })()
     })
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') addBtn.click()

@@ -46,7 +46,7 @@ export interface WalletBalance {
 }
 
 export interface OptionsListGroup {
-  default: string[]   // built-in, immutable
+  default: string[]   // built-in keys still in use (removed ones are left out)
   custom: string[]    // user-defined
 }
 
@@ -99,6 +99,9 @@ export const DEFAULT_TRANSFER_CATEGORIES = [
   'account_transfer', 'credit_card_payment',
   'investment_trade',
 ] as const
+
+// Categories the plugin's own logic depends on; they cannot be renamed or removed
+export const LOCKED_CATEGORIES: readonly string[] = ['credit_card_payment']
 
 export const DEFAULT_CONFIG: PennyWalletConfig = {
   wallets: [

@@ -454,3 +454,63 @@ describe('addRecurring', () => {
     expect(parseMonthFile(store.get('Ledgers/2026-11.md')!)[0]).toMatchObject({ date: '11/07', note: 'Phone EMI' })
   })
 })
+
+// ── categories ────────────────────────────────────────────────────────────────
+
+describe('categories', () => {
+  it('keeps a removed built-in category removed after reload', async () => {
+    const { wf, store } = await makeWalletFile()
+    await wf.removeCategory('expense', 'tax')
+    expect(wf.getConfig().options.categories.expense.default).not.toContain('tax')
+
+    const { app } = createMockApp(Object.fromEntries(store))
+    const reloaded = new WalletFile(app)
+    await reloaded.loadConfig()
+    expect(reloaded.getConfig().options.categories.expense.default).not.toContain('tax')
+    expect(reloaded.getConfig().options.categories.expense.default).toContain('food')
+  })
+
+  it('never removes credit_card_payment', async () => {
+    const { wf } = await makeWalletFile()
+    await wf.removeCategory('transfer', 'credit_card_payment')
+    expect(wf.getConfig().options.categories.transfer.default).toContain('credit_card_payment')
+  })
+
+  it('restores credit_card_payment if missing from the saved config', async () => {
+    const config = { ...DEFAULT_CONFIG, options: { ...DEFAULT_CONFIG.options, categories: {
+      ...DEFAULT_CONFIG.options.categories, transfer: { default: ['account_transfer'], custom: [] },
+    } } }
+    const { app } = createMockApp({ '.penny-wallet.json': JSON.stringify(config) })
+    const wf = new WalletFile(app)
+    await wf.loadConfig()
+    expect(wf.getConfig().options.categories.transfer.default).toContain('credit_card_payment')
+  })
+
+  it('renames a custom category in place, in transactions and recurring payments', async () => {
+    const { wf, store } = await makeWalletFile()
+    wf.updateCustomCategories('expense', ['Car', 'Fuel'])
+    wf.updateConfig({ recurring: [{ id: 'r', name: 'Car', amount: 1, wallet: 'Default Wallet', category: 'Car', day: 1, startMonth: '2026-10' }] })
+    await wf.writeTransaction({ ...EXPENSE, category: 'Car' }, '2026-10')
+    await wf.writeTransaction({ ...EXPENSE, type: 'income', category: 'Car' }, '2026-10')
+
+    await wf.renameCategory('expense', 'Car', 'Vehicle')
+
+    expect(wf.getConfig().options.categories.expense.custom).toEqual(['Vehicle', 'Fuel'])
+    expect(wf.getConfig().recurring[0].category).toBe('Vehicle')
+    const txs = parseMonthFile(store.get('Ledgers/2026-10.md')!)
+    expect(txs.find(tx => tx.type === 'expense')!.category).toBe('Vehicle')
+    // Only the matching type is renamed
+    expect(txs.find(tx => tx.type === 'income')!.category).toBe('Car')
+  })
+
+  it('turns a renamed built-in into a custom category', async () => {
+    const { wf, store } = await makeWalletFile()
+    await wf.writeTransaction(EXPENSE, '2026-04')
+    await wf.renameCategory('expense', 'food', 'Groceries')
+
+    const cats = wf.getConfig().options.categories.expense
+    expect(cats.default).not.toContain('food')
+    expect(cats.custom).toContain('Groceries')
+    expect(parseMonthFile(store.get('Ledgers/2026-04.md')!)[0].category).toBe('Groceries')
+  })
+})
