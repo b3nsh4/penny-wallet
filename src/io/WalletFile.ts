@@ -419,7 +419,10 @@ export class WalletFile {
     let posted = 0
     let changed = false
     const recurring = (this.config.recurring ?? []).map(r => ({ ...r }))
+    const walletNames = new Set(this.config.wallets.map(w => w.name))
     for (const r of recurring) {
+      // Never post to an account that no longer exists
+      if (!walletNames.has(r.wallet)) continue
       for (const ym of dueRecurringMonths(r, today)) {
         if (!hasRecurringEntry(await this.readMonth(ym), r, ym)) {
           await this.writeTransaction(buildRecurringTransaction(r, ym), ym)

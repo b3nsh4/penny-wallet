@@ -252,10 +252,15 @@ export class PennyWalletSettingTab extends PluginSettingTab {
       new WalletEditModal(this.app, wallet, async (updated) => {
         const scrollTop = this.getSettingsScrollTop()
         const wallets = config.wallets.map(w => w.name === wallet.name ? { ...w, ...updated } : w)
-        if (updated.name && updated.name !== wallet.name && config.defaultWallet === wallet.name) {
-          this.walletFile.updateConfig({ wallets, defaultWallet: updated.name })
+        const renamed = updated.name && updated.name !== wallet.name ? updated.name : null
+        // Recurring payments follow the account to its new name
+        const recurring = renamed
+          ? (config.recurring ?? []).map(r => r.wallet === wallet.name ? { ...r, wallet: renamed } : r)
+          : config.recurring
+        if (renamed && config.defaultWallet === wallet.name) {
+          this.walletFile.updateConfig({ wallets, recurring, defaultWallet: renamed })
         } else {
-          this.walletFile.updateConfig({ wallets })
+          this.walletFile.updateConfig({ wallets, recurring })
         }
         await this.walletFile.saveConfig()
         if (updated.name && updated.name !== wallet.name) {

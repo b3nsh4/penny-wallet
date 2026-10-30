@@ -423,6 +423,14 @@ describe('postDueRecurring', () => {
     expect(wf.getConfig().recurring[0].lastPosted).toBe('2026-10')
   })
 
+  it('skips a payment whose account no longer exists', async () => {
+    const { wf, store } = await makeWalletFile()
+    wf.updateConfig({ recurring: [{ ...emi, wallet: 'Gone' }] })
+    expect(await wf.postDueRecurring(new Date(2026, 9, 6))).toBe(0)
+    expect(store.has('Ledgers/2026-10.md')).toBe(false)
+    expect(wf.getConfig().recurring[0].lastPosted).toBeUndefined()
+  })
+
   it('updates the month frontmatter expense total', async () => {
     const { wf, store } = await withRecurring()
     await wf.postDueRecurring(new Date(2026, 9, 6))
