@@ -29,8 +29,13 @@ export class MobileTransactionModal extends TransactionModal {
     const config = this.walletFile.getConfig()
     this.initState(config)
     this.buildMobileUI(config)
+    this.watchConfigChanges()
     // iOS auto-focuses first button; delay ensures blur after animation
     setTimeout(() => (document.activeElement as HTMLElement)?.blur(), 100)
+  }
+
+  protected onConfigChanged() {
+    this.renderMobileRows(this.walletFile.getConfig())
   }
 
   private buildMobileUI(config: PennyWalletConfig) {
@@ -63,7 +68,7 @@ export class MobileTransactionModal extends TransactionModal {
 
     // Type tabs
     this.mobileTabsEl = contentEl.createDiv('pw-mobile-tabs')
-    this.renderMobileTabs(config)
+    this.renderMobileTabs()
 
     // Amount display
     const amountArea = contentEl.createDiv('pw-mobile-amount-area')
@@ -126,7 +131,7 @@ export class MobileTransactionModal extends TransactionModal {
     }
   }
 
-  private renderMobileTabs(config: PennyWalletConfig) {
+  private renderMobileTabs() {
     this.mobileTabsEl.empty()
     const types: TransactionType[] = ['expense', 'income', 'transfer']
     for (const tp of types) {
@@ -136,8 +141,9 @@ export class MobileTransactionModal extends TransactionModal {
       })
       tab.addEventListener('click', () => {
         this.resetStateForType(tp)
-        this.renderMobileTabs(config)
-        this.renderMobileRows(config)
+        const current = this.walletFile.getConfig()
+        this.renderMobileTabs()
+        this.renderMobileRows(current)
       })
     }
   }

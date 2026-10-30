@@ -1,4 +1,4 @@
-import { App, Modal, Notice, setIcon } from 'obsidian'
+import { App, EventRef, Events, Modal, Notice, setIcon } from 'obsidian'
 import { Transaction, TransactionType, TransactionModalParams, PennyWalletConfig } from '../types'
 import { WalletFile } from '../io/WalletFile'
 import { dateToYearMonth } from '../utils'
@@ -36,6 +36,7 @@ export class TransactionModal extends Modal {
   protected errorEl!: HTMLElement
   private amountPrefixEl: HTMLElement | null = null
   private isConfirming = false
+  private refreshRef: EventRef | null = null
   private isDeleting = false
 
   constructor(
@@ -60,6 +61,16 @@ export class TransactionModal extends Modal {
     const config = this.walletFile.getConfig()
     this.initState(config)
     this.buildUI(config)
+    this.watchConfigChanges()
+  }
+
+  /** Re-render when settings change (e.g. a category is added while this form is open). */
+  protected watchConfigChanges() {
+    this.refreshRef = (this.app.workspace as Events).on('penny-wallet:refresh', () => this.onConfigChanged())
+  }
+
+  protected onConfigChanged() {
+    this.renderFields(this.walletFile.getConfig(), false)
   }
 
   protected initState(config: PennyWalletConfig) {
@@ -520,6 +531,10 @@ export class TransactionModal extends Modal {
   }
 
   onClose() {
+    if (this.refreshRef) {
+      this.app.workspace.offref(this.refreshRef)
+      this.refreshRef = null
+    }
     this.containerEl.removeClass('pw-modal-keyboard-open')
     this.contentEl.empty()
     this.onDismiss?.()
