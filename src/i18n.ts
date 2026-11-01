@@ -185,8 +185,8 @@ const translations = {
 
     'settings.noActiveWallets': 'No active wallets',
     'settings.creditDebtPrefix': 'Owed ',
-    'settings.creditBalanceHint': 'What you already owed on this card before you started tracking, as a positive number (owe 3,000 → enter 3000). Leave it at 0 if you will log those purchases as expenses, otherwise they count twice.',
-    'settings.cashBankBalanceHint': 'Money already in this account before you started tracking (must be ≥ 0). Leave it at 0 if you will log that money as income, otherwise it counts twice.',
+    'settings.creditBalanceHint': 'What you already owed on this card before you started tracking (owe 3,000 → enter 3000). Enter it here only if you will not log those purchases as expenses. If you enter it here and also log the same purchases, they are counted twice. If you log them, leave this at 0.',
+    'settings.cashBankBalanceHint': 'Money already in this account before you started tracking (must be ≥ 0). Enter it here only if you will not log that money as income. If you enter it here and also log the same money, it is counted twice. If you log it, leave this at 0.',
 
     'notice.walletAdded': '✓ Account "{name}" added',
     'notice.walletReordered': '✓ Wallet order saved',
