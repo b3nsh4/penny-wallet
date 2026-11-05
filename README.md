@@ -1,30 +1,12 @@
-# PennyWallet
+# PennyWallet (Ben)
 
-> **Personal fork.** This is a standalone copy of [twrusstw/penny-wallet](https://github.com/twrusstw/penny-wallet), maintained for my own use. It does not track upstream and has diverged from it. The plugin id is `penny-wallet-ben`, so it is not the community plugin and is not updated through Obsidian. Issues and feature requests for PennyWallet belong in the original repository. The original MIT license and copyright notice are kept in [LICENSE](LICENSE).
+A personal finance tracker for [Obsidian](https://obsidian.md). Income, expenses, credit cards and recurring payments, stored as plain Markdown tables in the vault.
 
-A personal finance tracker plugin for [Obsidian](https://obsidian.md). Log expenses, income, transfers, credit card payments, and refunds — all stored as plain Markdown tables in your vault.
-
-**Documentation (original project):** [twrusstw.github.io/penny-wallet](https://twrusstw.github.io/penny-wallet/)
-
-## Features
-
-- **Finance overview** — monthly income / expense summary, 6-month income/expense chart, and category pie charts
-- **Transactions** — multi-select type and wallet filters, category and account dropdowns, date range, keyword search, and sticky subtotals
-- **Assets** — 3 / 6 / 12-month range selector, account balances, net asset trend, savings rate, and asset allocation pie
-- **Multiple account types** — cash, bank account, credit card (with debt tracking)
-- **Custom categories** — add your own expense and income categories
-- **Recurring payments** — EMIs and other fixed monthly expenses are added automatically at the start of each month, dated on their payment day, with an optional end month. Tick "Repeat monthly" when adding an expense, or manage them in settings
-- **Mobile-friendly entry** — touch-optimized transaction form with bottom-sheet pickers and an on-screen calculator
-- **iOS Shortcuts support** — add transactions via URI without opening Obsidian
-- **English only** — the original's Traditional Chinese translation is removed in this fork
+This started as a fork of [twrusstw/penny-wallet](https://github.com/twrusstw/penny-wallet) and is now its own thing. It is maintained for my own use, does not follow upstream, and works differently in several places (listed under [Changes from the original](#changes-from-the-original)). The original MIT license and copyright notice are kept in [LICENSE](LICENSE). Problems with the original plugin belong in its repository, not here.
 
 ## Installation
 
-This fork is not published to the Obsidian community plugin list and has no releases. Searching for PennyWallet in Obsidian installs the original plugin, not this one. The only way to install this version is to build it from source.
-
-### Build from source
-
-Requires Node.js and npm.
+This version is not in the Obsidian community plugin list and has no releases. Searching for PennyWallet in Obsidian installs the original, not this one. Build it from source:
 
 ```bash
 git clone https://github.com/b3nsh4/penny-wallet.git
@@ -34,108 +16,106 @@ npm run build
 ```
 
 1. Create `<vault>/.obsidian/plugins/penny-wallet-ben/`
-2. Copy `main.js`, `manifest.json` and `styles.css` from the repository root into it
-3. Reload Obsidian and enable **PennyWallet (Ben)** in **Settings → Community plugins**
+2. Copy `main.js`, `manifest.json` and `styles.css` into it
+3. Reload Obsidian and enable **PennyWallet (Ben)** in Settings → Community plugins
 
-Do not enable this alongside the original PennyWallet. Both read the same `.penny-wallet.json` and register the same views. Disable the original first; your existing data is picked up as is.
+To update: pull, rebuild, copy the three files again, then toggle the plugin off and on.
 
-To update, pull, rebuild, and copy the three files again.
+The plugin id is `penny-wallet-ben`, so Obsidian never replaces it with the community version. Do not run it alongside the original PennyWallet: both read the same `.penny-wallet.json` and register the same views.
 
-## Getting started
+On mobile, the plugin folder has to reach the phone some other way, for example by syncing the vault with git. The same build runs on desktop and Android.
 
-1. Enable PennyWallet (Ben) — a wallet icon appears in the left ribbon
-2. Open **Settings → PennyWallet** and add your accounts with their current balances ([Settings guide](https://twrusstw.github.io/penny-wallet/settings) · [中文說明](https://twrusstw.github.io/penny-wallet/zh/settings))
-3. Click the ribbon icon or run **Add transaction** from the Command Palette to log your first entry
+## How to log money
 
-## Transaction types
+Every number the plugin shows comes from the rows you log, plus each account's starting balance. Getting the entries right is most of it.
 
-| Type | Description |
-|------|-------------|
-| **Expense** | Money out from cash / bank / credit card |
-| **Income** | Money received into an account |
-| **Transfer** | Move money between accounts, including credit card payments |
+**Spending from the bank.** Add an expense on the bank account.
 
-Credit card accounts track outstanding debt. Expenses increase the debt; credit card payment transfers reduce it. Refunds are stored as negative expenses and shown as positive expense reversals. Net asset calculation automatically subtracts credit card debt.
+**Spending on a credit card.** Add an expense on the card account. The card's "owed" amount goes up, the bank does not change, and the purchase counts as spending.
 
-## Adding transactions
+**Paying the card bill.** Add a transfer from the bank to the card with the category *credit card payment*. The bank goes down and the card's owed amount goes down. It is not counted as spending again, because the purchases already were. Never log the bill as an expense as well, or the spending is counted twice.
 
-The transaction form supports refund entries, marks required fields, shows the original date when editing, and lets you attach tags as chips.
+**Taking money out of a card.** A transfer from the card to the bank (for example cash you received and deposited for something paid on the card) raises what you owe on the card and adds to the bank.
 
-![Transaction modal](images/transaction-modal.png)
+**Starting balance.** Use it only for money that was already there before you started tracking: savings already in a bank account, or debt already on a card. If you are going to log that money as entries instead, leave the starting balance at 0. Entering it in both places counts it twice. It is set once and never changes after that.
 
-On mobile, wallet / category / tag fields open as bottom-sheet pickers, and the amount field opens a calculator sheet with `00`, ⌫, and a formula bar in the title — press **Done** to commit.
+**Salary and the month.** Months are calendar months. If your salary arrives at the end of a month and pays for the next one, log it dated the 1st of the next month, along with anything spent between payday and the 1st. The plugin does not do this automatically; either wait until the 1st to log, or change the date in the form.
 
-<img src="images/transaction-modal-mobile.png" alt="Mobile calculator" width="320" />
+## Recurring payments
 
-## Views
+Fixed monthly payments such as EMIs, rent or insurance can be added once and are then logged automatically.
 
-### Finance overview
+- Add them in Settings → Recurring payments, or tick **Repeat monthly** when adding an expense. The checkbox also saves the expense you are entering as this month's payment, so for something that only starts next month, use settings.
+- Each payment has an amount, account, category, day of the month, start month and an optional end month.
+- On the 1st of every month, that month's payments are added, each dated on its own payment day, so the month shows what will be debited and the balance already accounts for it. The plugin checks when Obsidian starts and every hour while it is open. Missed months are filled in.
+- Nothing is added before the start month or after the end month. Removing a payment stops future entries and keeps past ones.
 
-Monthly summary with income, expense, and balance metrics, plus a 6-month income/expense chart and expense/income category pie charts. Each pie legend shows name, amount, and percentage.
+If a laptop and a phone both open Obsidian on the 1st before syncing, each can add the same entries. Open one device first that day and let it sync, or delete any duplicates.
 
-![Finance overview](images/finance-overview.png)
+## Screens
 
-### Transactions
+**Overview.** Each account's current balance on its own (bank balance, and "owed" for each card), this month's income and expense, a 6-month income and expense chart, and pie charts of spending and income by category. Every category gets its own slice.
 
-Full transaction list with multi-select type and wallet filters (tinted pills), category and account dropdowns, date-range pickers, and keyword search. On mobile, the dropdowns and date range collapse into a **Filter ▾** sheet next to the search box. Edit via hover (desktop) or row tap (mobile); delete lives inside the edit modal. Header and subtotals stay fixed while the list scrolls.
+**Transactions.** The month's entries with filters by type, category, account, date range and text. Tap a row to edit or delete it.
 
-![Transactions](images/transactions-view.png)
+**Assets.** Account balances, net assets and their trend over 3, 6 or 12 months.
 
-### Assets
+**Settings.** Accounts (with starting balances), recurring payments, and categories. Any category can be renamed (tap it) or removed (×). Renaming updates past transactions and recurring payments that use it. *Credit card payment* is fixed, because card balances depend on it.
 
-Medium-term financial view with a 3 / 6 / 12-month range selector, account balances, net asset trend, savings rate, and asset allocation pie.
+## Changes from the original
 
-![Assets](images/asset-view.png)
-
-### Settings
-
-General preferences, account management (active / archived), and custom expense / income / transfer categories.
-
-![Settings](images/settings-accounts.png)
-
-## URI handler
-
-PennyWallet registers the `obsidian://penny-wallet` URI scheme, allowing external apps — including iOS Shortcuts — to open the transaction form with fields pre-filled.
-
-```
-obsidian://penny-wallet?type=expense&amount=280&category=food&note=Lunch
-```
-
-Supported parameters: `type`, `amount`, `note`, `category`, `wallet`, `fromWallet`, `toWallet`, `date`.
-
-→ [Full URI handler & iOS Shortcuts guide](https://twrusstw.github.io/penny-wallet/uri-handler)
+- Recurring payments, with an optional end month and a **Repeat monthly** option in the add form
+- Categories, including the built-in ones, can be renamed and removed
+- Transfers out of a credit card raise its debt (the original lowered it)
+- The Overview shows each account separately; the month's "balance" figure is gone
+- Pie charts show every category instead of grouping small ones into "Other"
+- Clearer starting balance hints in the account forms
+- Open add/edit forms refresh when settings change
+- Rupee symbol in the mobile amount entry
+- English only; the Traditional Chinese translation is removed
 
 ## Data format
 
-Transactions are stored as Markdown tables, one file per month:
-
 ```
 <vault>/
-├── .penny-wallet.json     ← config (accounts, categories, settings)
+├── .penny-wallet.json     config: accounts, categories, recurring payments
 └── PennyWallet/
-    ├── 2026-04.md
-    └── 2026-03.md
+    ├── 2026-10.md
+    └── 2026-11.md
 ```
 
-Each month file has YAML frontmatter (`income`, `expense`, `netAsset`) for fast loading, followed by a plain Markdown table of transactions:
+Each month file has frontmatter with the month's totals, followed by a Markdown table:
 
 ```markdown
 ---
-income: 75956
-expense: 52539
+income: 75000
+expense: 12450
 netAsset: 0
 ---
 
-## 2026-05
+## 2026-11
 
 | Date | Type | Wallet | From | To | Category | Note | Tags | Amount | CreatedAt |
-| ---- | ---- | ------ | ---- | -- | -------- | ---- | ---- | ------ | --------- |
-| 05/02 | expense | HSBC Premier | - | - | housing | Rent | family,essential | 18418 | 2026-05-01T18:02:51.933Z |
-| 05/02 | expense | Citibank | - | - | shopping | Online Shopping | - | 941 | 2026-05-01T20:08:15.639Z |
+|------|------|--------|------|----|----------|------|------|--------|-----------|
+| 11/01 | income | Bank | - | - | salary | - | - | 75000 | 2026-11-01T08:00:00.000Z |
+| 11/03 | expense | Bank | - | - | EMI | Oven | - | 2400 | 2026-11-01T08:00:01.000Z |
+| 11/04 | expense | Card | - | - | food | Groceries | - | 650 | 2026-11-04T12:30:00.000Z |
 ```
 
-The format is compatible with Git sync and Dataview queries.
+The files are plain text, so they work with git and Dataview, and stay readable without the plugin.
+
+The `obsidian://penny-wallet` URI from the original still works for opening the add form with fields filled in, e.g. `obsidian://penny-wallet?type=expense&amount=280&category=food&note=Lunch`. Supported parameters: `type`, `amount`, `note`, `category`, `wallet`, `fromWallet`, `toWallet`, `date`.
+
+## Development
+
+```bash
+npm test          # unit and integration tests (vitest)
+npm run lint      # eslint and type check
+npm run build     # production build to main.js
+```
+
+The UI test scripts in `scripts/` come from the original project and have not been updated for this version.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Original work © twrusstw.
