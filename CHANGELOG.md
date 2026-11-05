@@ -4,6 +4,11 @@ All notable changes to PennyWallet will be documented in this file.
 
 Versions 1.0.0 and later are PennyWallet (Ben), a personal version that diverged from twrusstw/penny-wallet after 0.0.15.
 
+## [Unreleased]
+
+### Added
+- Tap an account on the Overview to open that month's transactions filtered to it
+
 ## [1.0.0] - 2026-11-05
 
 First release of PennyWallet (Ben), plugin id `penny-wallet-ben`.
