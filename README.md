@@ -6,7 +6,11 @@ This started as a fork of [twrusstw/penny-wallet](https://github.com/twrusstw/pe
 
 ## Installation
 
-This version is not in the Obsidian community plugin list and has no releases. Searching for PennyWallet in Obsidian installs the original, not this one. Build it from source:
+This version is not in the Obsidian community plugin list. Searching for PennyWallet in Obsidian installs the original, not this one.
+
+**From a release.** Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/b3nsh4/penny-wallet/releases/latest), then follow steps 1 to 3 below.
+
+**From source:**
 
 ```bash
 git clone https://github.com/b3nsh4/penny-wallet.git
@@ -19,7 +23,7 @@ npm run build
 2. Copy `main.js`, `manifest.json` and `styles.css` into it
 3. Reload Obsidian and enable **PennyWallet (Ben)** in Settings → Community plugins
 
-To update: pull, rebuild, copy the three files again, then toggle the plugin off and on.
+To update: download the new release (or pull and rebuild), copy the three files again, then toggle the plugin off and on.
 
 The plugin id is `penny-wallet-ben`, so Obsidian never replaces it with the community version. Do not run it alongside the original PennyWallet: both read the same `.penny-wallet.json` and register the same views.
 

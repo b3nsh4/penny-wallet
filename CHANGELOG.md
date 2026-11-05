@@ -2,6 +2,31 @@
 
 All notable changes to PennyWallet will be documented in this file.
 
+Versions 1.0.0 and later are PennyWallet (Ben), a personal version that diverged from twrusstw/penny-wallet after 0.0.15.
+
+## [1.0.0] - 2026-11-05
+
+First release of PennyWallet (Ben), plugin id `penny-wallet-ben`.
+
+### Added
+- Recurring payments (EMIs, rent and other fixed monthly expenses) with an optional end month, managed in settings
+- "Repeat monthly" option when adding an expense
+- Recurring payments for a month are added on the 1st, each dated on its payment day
+- Rename and remove any category, including built-in ones; renaming updates past transactions and recurring payments
+- Overview shows each account's balance on its own (bank balance, amount owed per card)
+
+### Changed
+- Pie charts show every category instead of grouping small ones into "Other"
+- Removed the month "balance" figure from the Overview
+- Clearer starting balance hints when adding or editing an account
+- Open add/edit forms refresh when settings change
+- Rupee symbol in the mobile amount entry
+- English only; the Traditional Chinese translation is removed
+
+### Fixed
+- Transfers out of a credit card now raise its debt instead of lowering it
+- Renaming an account updates recurring payments that use it
+
 ## [0.0.15] - 2026-05-24
 
 ### Fixed
