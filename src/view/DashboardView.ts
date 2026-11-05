@@ -76,12 +76,24 @@ export class DashboardView extends ItemView {
     const accountsEl = contentEl.createDiv('pw-metrics pw-account-metrics')
     for (const { wallet, balance } of walletBalances) {
       if (wallet.status === 'archived') continue
+      let card: HTMLElement
       if (wallet.type === 'creditCard') {
         const label = balance >= 0 ? tn('dash.cardOwed', { name: wallet.name }) : tn('dash.cardCredit', { name: wallet.name })
-        createMetric(accountsEl, label, balance, 'neutral', { dp })
+        card = createMetric(accountsEl, label, balance, 'neutral', { dp })
       } else {
-        createMetric(accountsEl, wallet.name, balance, balance < 0 ? 'negative' : 'neutral', { dp, hero: true })
+        card = createMetric(accountsEl, wallet.name, balance, balance < 0 ? 'negative' : 'neutral', { dp, hero: true })
       }
+      // Tap an account to see this month's transactions for it
+      card.addClass('is-clickable')
+      card.setAttribute('role', 'button')
+      card.tabIndex = 0
+      const open = () => { void this.openDetailForWallet(wallet.name) }
+      card.addEventListener('click', open)
+      card.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        open()
+      })
     }
 
     // ── Monthly metrics ──────────────────────────────────────────────────────
@@ -132,6 +144,12 @@ export class DashboardView extends ItemView {
   private async openDetailWithFilter(type: TransactionType, category: string) {
     await this.openOrRevealView(DETAIL_VIEW_TYPE, {
       state: { yearMonth: this.currentYearMonth, filterType: type, filterCategory: category, resetFilters: true },
+    })
+  }
+
+  private async openDetailForWallet(walletName: string) {
+    await this.openOrRevealView(DETAIL_VIEW_TYPE, {
+      state: { yearMonth: this.currentYearMonth, filterWallet: walletName, resetFilters: true },
     })
   }
 

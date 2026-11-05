@@ -2074,6 +2074,15 @@ button.pw-pill {
   padding-bottom: 0;
 }
 
+.pw-metric.is-clickable {
+  cursor: pointer;
+}
+
+.pw-metric.is-clickable:hover,
+.pw-metric.is-clickable:focus-visible {
+  background: var(--background-modifier-hover);
+}
+
 .pw-metric {
   background: var(--background-secondary);
   border-radius: 10px;

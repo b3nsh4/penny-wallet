@@ -54,6 +54,7 @@ export class DetailView extends ItemView {
     if (state?.yearMonth) this.currentYearMonth = state.yearMonth as string
     if (state?.filterType) this.filterTypes = new Set([state.filterType as TransactionType])
     if (state?.filterCategory) this.filterCategories = new Set([state.filterCategory as string])
+    if (state?.filterWallet) this.filterWallets = new Set([state.filterWallet as string])
     await super.setState(state, result)
     await this.render()
   }
