@@ -6,6 +6,8 @@ Versions 1.0.0 and later are PennyWallet (Ben), a personal version that diverged
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-05
+
 ### Added
 - Tap an account on the Overview to open that month's transactions filtered to it
 
