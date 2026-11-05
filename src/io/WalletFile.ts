@@ -861,16 +861,15 @@ export class WalletFile {
         }
         break
       case 'transfer':
-        if (tx.category === 'credit_card_payment') {
-          if (tx.fromWallet && map.has(tx.fromWallet))
-            map.set(tx.fromWallet, (map.get(tx.fromWallet) ?? 0) - tx.amount)
-          if (tx.toWallet && map.has(tx.toWallet))
-            map.set(tx.toWallet, (map.get(tx.toWallet) ?? 0) - tx.amount)
-        } else {
-          if (tx.fromWallet && map.has(tx.fromWallet))
-            map.set(tx.fromWallet, (map.get(tx.fromWallet) ?? 0) - tx.amount)
-          if (tx.toWallet && map.has(tx.toWallet))
-            map.set(tx.toWallet, (map.get(tx.toWallet) ?? 0) + tx.amount)
+        // A credit card balance is what is owed: money taken from a card raises
+        // it, money paid into a card (e.g. a bill payment) lowers it
+        if (tx.fromWallet && map.has(tx.fromWallet)) {
+          const delta = walletType(tx.fromWallet) === 'creditCard' ? tx.amount : -tx.amount
+          map.set(tx.fromWallet, (map.get(tx.fromWallet) ?? 0) + delta)
+        }
+        if (tx.toWallet && map.has(tx.toWallet)) {
+          const delta = walletType(tx.toWallet) === 'creditCard' ? -tx.amount : tx.amount
+          map.set(tx.toWallet, (map.get(tx.toWallet) ?? 0) + delta)
         }
         break
     }

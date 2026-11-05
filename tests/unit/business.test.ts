@@ -64,6 +64,26 @@ describe('computeWalletBalances', () => {
     expect(card.balance).toBe(0)      // 0 + 500 - 500
   })
 
+  it('transfer from creditCard to bank (cash withdrawal) raises card debt', () => {
+    const wf = makeWalletFile([BANK, CARD])
+    const txs: Transaction[] = [
+      { date: '11/05', type: 'transfer', category: 'CC to Cash', fromWallet: 'Card', toWallet: 'Bank', note: '', amount: 2500 },
+    ]
+    const result = wf.computeWalletBalances(txs)
+    expect(result.find(r => r.wallet.name === 'Bank')!.balance).toBe(7500)  // 5000 + 2500
+    expect(result.find(r => r.wallet.name === 'Card')!.balance).toBe(2500)  // owed 0 + 2500
+  })
+
+  it('transfer from bank to creditCard under any category lowers card debt', () => {
+    const wf = makeWalletFile([BANK, { ...CARD, initialBalance: 1000 }])
+    const txs: Transaction[] = [
+      { date: '04/15', type: 'transfer', category: 'account_transfer', fromWallet: 'Bank', toWallet: 'Card', note: '', amount: 400 },
+    ]
+    const result = wf.computeWalletBalances(txs)
+    expect(result.find(r => r.wallet.name === 'Bank')!.balance).toBe(4600)
+    expect(result.find(r => r.wallet.name === 'Card')!.balance).toBe(600)
+  })
+
   it('negative expense on creditCard reduces debt', () => {
     const wf = makeWalletFile([CARD])
     const txs: Transaction[] = [
@@ -86,13 +106,13 @@ describe('computeWalletBalances', () => {
 
   it('transfer credit_card_refund no longer has special case (treated as normal transfer)', () => {
     const wf = makeWalletFile([BANK, CARD])
-    // Old-style record still parsed, now processed as regular transfer (from-, to+)
+    // Old-style record still parsed, now processed as a regular transfer
     const txs: Transaction[] = [
       { date: '04/01', type: 'transfer', category: 'credit_card_refund', fromWallet: 'Card', toWallet: 'Card', note: '', amount: 100 },
     ]
     const result = wf.computeWalletBalances(txs)
     const card = result.find(r => r.wallet.name === 'Card')!
-    // from=Card: balance -= 100; to=Card: balance += 100 → net 0
+    // from=Card: debt += 100; to=Card: debt -= 100 → net 0
     expect(card.balance).toBe(0)
   })
 
